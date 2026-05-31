@@ -20,6 +20,7 @@ STEPS=(
   "50-nvidia-runtime.sh"
   "60-tailscale.sh"
   "70-time-ntp.sh"
+  "80-services.sh"      # habilita o systemd (auto-start dos containers no boot)
   "30-gmsl-driver.sh"   # por último: exige reboot
 )
 

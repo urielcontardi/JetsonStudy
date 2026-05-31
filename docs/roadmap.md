@@ -10,14 +10,16 @@ acessível remotamente.
 - [x] **Provisionamento como código** (`deploy/`): scripts idempotentes `99-bootstrap.sh`
       (base + storage + Docker + NVIDIA runtime + Tailscale + NTP + driver GMSL) + `host-verify.sh`
       + runbook. Pré-requisito: JetPack flashado (passo 0). Ver `deploy/README.md`.
-- [ ] `recorder` (DeepStream/pyds): captura 2 câmeras (Argus) → encode H.264 SW (GOP ~1 s) →
-      `splitmuxsink` (segmentos ~10 s) no NVMe. `nvinfer` **stub/desligado**.
-- [ ] Índice **SQLite** preenchido a cada segmento fechado.
-- [ ] **Rotação por espaço** (limpa segmentos antigos acima de ~85% do disco).
-- [ ] `clip-api` (FastAPI): `GET /clips?camera&start&end` → ffmpeg copy → MP4.
-- [ ] Acesso via **Tailscale** (MagicDNS, ACLs).
-- [ ] `broker` (Mosquitto) e `uploader` **no esqueleto** (sem modelo ainda).
-- [ ] `docker-compose.yml` subindo os 4 serviços; **build local**.
+- [x] `recorder` (Plano 1B): captura 2 câmeras (Argus) → encode H.264 SW (GOP ~1 s) →
+      `splitmuxsink` (segmentos fMP4 ~4 s) no NVMe. `nvinfer` **stub/ausente**. *(código pronto;
+      runtime GStreamer a validar no Jetson)*
+- [x] Índice **SQLite** + **playlist HLS** preenchidos pelo indexer a cada segmento.
+- [x] **Rotação por espaço** (limpa segmentos antigos acima de ~85% do disco).
+- [x] `clip-api` (FastAPI): `GET /clips?camera&start&end` → ffmpeg copy → MP4.
+- [x] `broker` (Mosquitto) e `uploader` **no esqueleto** (sem modelo ainda).
+- [x] `docker-compose.yml` subindo os serviços; **build local**; auto-start via `orwell.service`.
+- [ ] **Validar on-device** (Jetson): pipeline GStreamer, tag DeepStream, concat fMP4, câmeras.
+- [ ] Acesso via **Tailscale** (provisionado por `deploy/60-tailscale.sh`).
 
 **Critério de pronto:** gravo 2 câmeras por horas, o disco rotaciona sozinho, e consigo baixar
 um intervalo arbitrário de vídeo de fora pela Clip API via Tailscale.

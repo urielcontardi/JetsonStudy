@@ -76,5 +76,10 @@ config/      services/{recorder,clip-api,uploader}/   shared/   models/   deploy
 - `docs/operations.md` — acesso remoto (Tailscale), atualização (compose → Rancher), provisionamento.
 - `deploy/` — **provisionamento como código**: scripts idempotentes (`99-bootstrap.sh`) + runbook
   (`deploy/README.md`) para preparar uma placa zerada (JetPack já flashado).
+- `DEPLOY.md` — **guia de deploy ponta-a-ponta** (placa zerada → no ar; containers sobem no boot via
+  `orwell.service`).
+- Planos de implementação: `docs/superpowers/plans/`. Serviços implementados em `shared/` +
+  `services/{recorder,clip-api,uploader}/` (ver `services/README.md`). **Ainda não validados
+  on-device** (dev em macOS; alvo é o Jetson).
 - `docs/roadmap.md` — faseamento POC → escala.
 - `docs/decisions/` — ADRs (decisões + porquês).

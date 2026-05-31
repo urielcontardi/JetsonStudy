@@ -1,6 +1,7 @@
 services:
   broker:
     image: eclipse-mosquitto:2
+    restart: unless-stopped
     volumes:
       - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
@@ -11,6 +12,7 @@ services:
     build:
       context: .
       dockerfile: services/clip-api/Dockerfile
+    restart: unless-stopped
     environment:
       ORWELL_INDEX_DB: /data/index.sqlite
       ORWELL_DATA_DIR: /data
@@ -24,6 +26,7 @@ services:
     build:
       context: .
       dockerfile: services/uploader/Dockerfile
+    restart: unless-stopped
     environment:
       ORWELL_CONFIG: /app/config/orwell.yaml
       ORWELL_INDEX_DB: /data/index.sqlite
@@ -32,7 +35,27 @@ services:
       - ./config:/app/config:ro
     depends_on: [broker]
 
-  # recorder: definido no Plano 1B (DeepStream, base L4T, on-device).
+  # ── recorder: SÓ no Jetson (precisa de GStreamer/NVIDIA + câmeras GMSL). ──
+  # Suba-o só no device com:  docker compose --profile jetson up -d
+  recorder:
+    profiles: ["jetson"]
+    build:
+      context: .
+      dockerfile: services/recorder/Dockerfile
+    restart: unless-stopped
+    runtime: nvidia               # NVIDIA Container Runtime (default-runtime também é nvidia)
+    privileged: true              # acesso às câmeras GMSL/Argus
+    ipc: host
+    environment:
+      ORWELL_CONFIG: /app/config/orwell.yaml
+      ORWELL_INDEX_DB: /data/index.sqlite
+    volumes:
+      - ${ORWELL_DATA_DIR:-./data}:/data
+      - ./config:/app/config:ro
+      - /tmp/argus_socket:/tmp/argus_socket   # daemon Argus do host
+    devices:
+      - /dev/video0:/dev/video0
+      # adicione mais conforme as câmeras: /dev/video1, etc.
 
 volumes:
   mosquitto-data:

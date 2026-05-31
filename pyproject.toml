@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orwell-shared"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.10"   # JetPack 6 traz Python 3.10 (imagem L4T do recorder)
 dependencies = [
     "pydantic>=2.6",
     "pyyaml>=6.0",
@@ -29,4 +29,4 @@ include = ["orwell_shared*"]
 
 [tool.pytest.ini_options]
 testpaths = ["shared/tests", "services", "tests"]
-pythonpath = ["services/clip-api", "services/uploader"]
+pythonpath = ["services/clip-api", "services/uploader", "services/recorder"]

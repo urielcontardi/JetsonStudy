@@ -28,7 +28,9 @@ curl localhost:8080/healthz        # {"status":"ok"}
 - `shared/orwell_shared/` — lógica pura (config, índice, retenção, clipes, storage, eventos).
 - `services/clip-api/clip_api/` — FastAPI: `GET /clips`, `/cameras`, `/segments`, `/healthz`.
 - `services/uploader/uploader/` — MQTT → clipe → nuvem (esqueleto; IA no Plano 2).
-- `recorder/` — DeepStream on-device (**Plano 1B**, ainda não implementado).
+- `services/recorder/recorder/` — captura/encode/gravação on-device (DeepStream/GStreamer).
+  **Implementado** (pipeline + indexer + main); partes puras têm testes; o runtime GStreamer só
+  roda no Jetson (ver `DEPLOY.md`). IA (`nvinfer`) fica para a Fase 2.
 
 ## Pacotes (nomes únicos por serviço)
 Cada serviço expõe um pacote de nome único (`clip_api`, `uploader`) para evitar colisão de import
