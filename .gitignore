@@ -1,0 +1,38 @@
+# Companion de brainstorming (mockups locais)
+.superpowers/
+
+# Modelos / engines grandes (versionados fora do git)
+models/*.engine
+models/*.onnx
+models/*.trt
+*.engine
+
+# Dados de runtime (vídeo gravado, índice, clipes)
+data/
+*.mp4
+*.mkv
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Segredos / config local
+config/*.local.*
+secrets/
+
+# Provisionamento: artefatos (drivers .deb) e overrides locais com segredos
+deploy/artifacts/
+deploy/*.local.env
+
+# Sistema
+.DS_Store
