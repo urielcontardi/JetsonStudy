@@ -1,0 +1,38 @@
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    ports:
+      - "1883:1883"
+
+  clip-api:
+    build:
+      context: .
+      dockerfile: services/clip-api/Dockerfile
+    environment:
+      ORWELL_INDEX_DB: /data/index.sqlite
+      ORWELL_DATA_DIR: /data
+    volumes:
+      - ${ORWELL_DATA_DIR:-./data}:/data
+    ports:
+      - "8080:8080"
+    depends_on: [broker]
+
+  uploader:
+    build:
+      context: .
+      dockerfile: services/uploader/Dockerfile
+    environment:
+      ORWELL_CONFIG: /app/config/orwell.yaml
+      ORWELL_INDEX_DB: /data/index.sqlite
+    volumes:
+      - ${ORWELL_DATA_DIR:-./data}:/data
+      - ./config:/app/config:ro
+    depends_on: [broker]
+
+  # recorder: definido no Plano 1B (DeepStream, base L4T, on-device).
+
+volumes:
+  mosquitto-data:

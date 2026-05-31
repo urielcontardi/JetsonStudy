@@ -1,0 +1,27 @@
+device_name: orwell-01
+cameras:
+  - id: "0"
+    argus_sensor_id: 0
+    name: front
+  - id: "1"
+    argus_sensor_id: 1
+    name: rear
+capture:
+  width: 1920
+  height: 1080
+  fps: 15
+  codec: h264
+  gop_seconds: 1.0
+  segment_seconds: 4.0      # fácil de mudar (ADR-0006)
+  bitrate_kbps: 6000
+retention:
+  data_dir: /var/lib/orwell/data
+  disk_high_watermark_pct: 85
+broker:
+  host: broker
+  port: 1883
+  events_topic: orwell/events
+cloud:
+  backend: s3
+  bucket: ""                # preencher quando definir a nuvem (ADR-0010)
+  prefix: orwell/

@@ -15,6 +15,13 @@
 - Layout de segmento: `data/{camera_id}/{YYYY}/{MM}/{DD}/{HH}/seg-<epoch_ms>.m4s`; init: `data/{camera_id}/init.mp4`.
 - Nada de placeholders: 12-factor (config via YAML + env `ORWELL_*`).
 
+> **Nota de execução (2026-05-31):** durante a implementação, os pacotes dos serviços foram
+> nomeados de forma **única** — `clip_api` (em `services/clip-api/clip_api/`) e `uploader`
+> (em `services/uploader/uploader/`) — em vez de `app`, para evitar colisão de import no pytest.
+> O `pyproject.toml` adiciona `pythonpath = ["services/clip-api", "services/uploader"]`. Os
+> Dockerfiles usam `uvicorn clip_api.main:app` e `python -m uploader.main`. As assinaturas e
+> tipos das Tasks 8–11 permanecem idênticos; só o nome do pacote mudou de `app` → `clip_api`/`uploader`.
+
 ---
 
 ## File Structure
