@@ -9,11 +9,17 @@ cameras:
 capture:
   width: 1920
   height: 1080
-  fps: 15
-  codec: h264
+  fps: 30
+  codec: h265            # h264 | h265
+  encoder: hw            # hw (NVENC, Orin NX) | sw (x264enc, fallback Nano)
   gop_seconds: 1.0
-  segment_seconds: 4.0      # fácil de mudar (ADR-0006)
-  bitrate_kbps: 6000
+  segment_seconds: 4.0   # fácil de mudar (ADR-0006)
+  bitrate_kbps: 8000
+ai:
+  enabled: false         # Fase 1 = false; Fase 2 liga nvinfer/nvtracker
+preview:
+  enabled: false         # ferramenta de dev (RTSP/WebRTC via MediaMTX)
+  rtsp_base_url: rtsp://preview:8554
 retention:
   data_dir: /var/lib/orwell/data
   disk_high_watermark_pct: 85
