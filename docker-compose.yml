@@ -57,5 +57,18 @@ services:
       - /dev/video0:/dev/video0
       # adicione mais conforme as câmeras: /dev/video1, etc.
 
+  # ── preview: SÓ em dev. Live view (RTSP/WebRTC) das câmeras via MediaMTX. ──
+  # Suba com:  docker compose --profile dev up -d preview
+  # No Mac (via Tailscale):  VLC -> rtsp://orwell-nx:8554/cam0  |  WebRTC -> http://orwell-nx:8889/cam0
+  preview:
+    profiles: ["dev"]
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    volumes:
+      - ./config/mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "8554:8554"
+      - "8889:8889"
+
 volumes:
   mosquitto-data:

@@ -1,0 +1,8 @@
+# MediaMTX — preview ao vivo (RTSP/WebRTC) p/ dev. Recebe push do recorder e
+# reexpõe via RTSP (8554) e WebRTC (8889). Não faz parte do caminho de produção.
+rtsp: yes
+rtspAddress: :8554
+webrtc: yes
+webrtcAddress: :8889
+paths:
+  all_others:
