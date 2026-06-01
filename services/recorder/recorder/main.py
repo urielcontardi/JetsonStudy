@@ -1,7 +1,8 @@
 """Recorder do Orwell (Fase 1B) — roda NO JETSON (JetPack/DeepStream).
 
-Captura cada câmera via Argus, codifica em H.264 por software (Orin Nano não tem NVENC) e grava
-segmentos fMP4 de ~segment_seconds via `splitmuxsink`, nomeados por epoch. Um indexador roda em
+Captura cada câmera via Argus, codifica via encoder configurável (NVENC HW na Orin NX; x264enc SW
+como fallback) e grava segmentos fMP4 de ~segment_seconds via `splitmuxsink`, nomeados por epoch.
+Um `tee` após o parser permite um branch de preview opcional (MediaMTX). Um indexador roda em
 paralelo, refletindo os segmentos no índice SQLite, gerando a playlist HLS e aplicando retenção.
 
 ⚠️ Requer GStreamer + plugins NVIDIA (gi/Gst) — só executa no Jetson. As partes puras
@@ -19,7 +20,7 @@ from orwell_shared.index import SegmentIndex
 from orwell_shared.paths import segment_path
 
 from .indexer import run_once
-from .pipeline import build_source_chain, max_size_time_ns
+from .pipeline import build_source_chain, max_size_time_ns, preview_branch
 
 INDEXER_PERIOD_S = 2.0
 
@@ -34,15 +35,19 @@ def _make_format_location_cb(data_dir: str, camera_id: str):
     return _cb
 
 
-def _build_camera_bin(Gst, camera, profile, data_dir: str):
-    """Monta o pipeline de uma câmera: cadeia de captura/encode + splitmuxsink fragmentado."""
-    desc = (
-        build_source_chain(camera, profile)
-        + " ! splitmuxsink name=sink "
-        + f"max-size-time={max_size_time_ns(profile)} "
-        + 'muxer-factory=mp4mux '
-        + 'muxer-properties="properties,fragment-duration=1000,faststart=true"'
+def _build_camera_bin(Gst, camera, profile, preview, data_dir: str):
+    """Pipeline de uma câmera: captura/encode → tee → splitmuxsink (+ preview opcional)."""
+    record_sink = (
+        "splitmuxsink name=sink "
+        f"max-size-time={max_size_time_ns(profile)} "
+        'muxer-factory=mp4mux '
+        'muxer-properties="properties,fragment-duration=1000,faststart=true"'
     )
+    preview_chain = preview_branch(preview, camera.id)
+    desc = build_source_chain(camera, profile) + " ! tee name=t "
+    desc += f"t. ! queue ! {record_sink} "
+    if preview_chain:
+        desc += f"t. ! queue ! {preview_chain} "
     pipeline = Gst.parse_launch(desc)
     sink = pipeline.get_by_name("sink")
     sink.connect("format-location-full", _make_format_location_cb(data_dir, camera.id))
@@ -71,7 +76,8 @@ def main() -> None:
     index = SegmentIndex(os.environ.get(
         "ORWELL_INDEX_DB", f"{config.retention.data_dir}/index.sqlite"))
 
-    pipelines = [_build_camera_bin(Gst, cam, config.capture, config.retention.data_dir)
+    pipelines = [_build_camera_bin(Gst, cam, config.capture, config.preview,
+                                   config.retention.data_dir)
                  for cam in config.cameras]
     for p in pipelines:
         p.set_state(Gst.State.PLAYING)
