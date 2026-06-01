@@ -1,6 +1,7 @@
 # ADR-0005 — Encode H.264 por software + perfil reduzido
 
-**Status:** Aceito · 2026-05-31
+**Status:** Superseded por [ADR-0014](0014-encoder-configuravel-hw-sw.md) · 2026-06-01
+(o alvo passou a ser a Orin NX, com NVENC). Mantido como histórico do raciocínio para a Orin Nano.
 
 ## Contexto
 O **Jetson Orin Nano não tem NVENC** (encoder de hardware) — confirmado pela NVIDIA ("Software

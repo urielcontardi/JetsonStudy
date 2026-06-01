@@ -1,6 +1,7 @@
 # ADR-0012 — Orin NX como caminho de escala (NVENC/H.265)
 
-**Status:** Aceito (planejado) · 2026-05-31
+**Status:** Aceito · 2026-06-01 — Orin NX é o **alvo primário** do projeto (não mais só "caminho
+de escala futuro"). A Nano permanece como fallback de encode por software (ADR-0014).
 
 ## Contexto
 O Orin Nano não tem NVENC (ADR-0005), limitando encode a software e disputando CPU com a IA. O
