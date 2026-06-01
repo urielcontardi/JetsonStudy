@@ -6,12 +6,13 @@
 ## O que é
 
 **Orwell** é um **DVR de borda com IA**: grava câmeras continuamente em buffer circular numa
-**NVIDIA Jetson Orin Nano**, permite **recortar/baixar intervalos** de vídeo remotamente e
+**NVIDIA Jetson Orin NX**, permite **recortar/baixar intervalos** de vídeo remotamente e
 (em fase seguinte) roda **IA local** que dispara o **envio de ~10 s de vídeo** de cada evento
 para a nuvem. Acesso remoto via **Tailscale**; futura gestão de frota via **Rancher**.
 
-- **Hardware:** Jetson Orin Nano + carrier/ZED Box (GMSL2) + **2× ZED X One S** (monoculares) + NVMe.
-- **Estado:** projeto novo. Design aprovado em `docs/superpowers/specs/2026-05-31-orwell-dvr-borda-design.md`.
+- **Hardware:** Jetson Orin NX (Nano = fallback) + carrier/ZED Box (GMSL2) + **2× ZED X One S** (monoculares) + NVMe.
+- **Estado:** projeto novo. Design aprovado em `docs/superpowers/specs/2026-05-31-orwell-dvr-borda-design.md`;
+  reescrita para Orin NX em `docs/superpowers/specs/2026-06-01-orwell-nx-rewrite-design.md`.
 
 ## Stack (decidida)
 
@@ -26,14 +27,17 @@ para a nuvem. Acesso remoto via **Tailscale**; futura gestão de frota via **Ran
 
 ## Restrições que NÃO podem ser esquecidas
 
-- ⚠️ **Orin Nano NÃO tem NVENC** (encoder de hardware). **Encode é por software (CPU, H.264).**
-  H.265 software em tempo real para 2 streams é inviável. Perfil POC reduzido: **1080p@15fps, 2 cams**.
+- ⚠️ **Alvo é a Orin NX (TEM NVENC)** → encode por **hardware** (`nvv4l2h265enc`/`nvv4l2h264enc`),
+  **H.265 viável**. A **Orin Nano (sem NVENC) é fallback** por software (`x264enc`, H.264). O encoder
+  é **selecionável por config** (`capture.codec` + `capture.encoder`; ver [ADR-0014](docs/decisions/0014-encoder-configuravel-hw-sw.md)).
+  H.265 por software continua inviável (só no fallback Nano, que usa H.264 SW).
 - ⚠️ **Câmeras ZED X One S são GMSL2, não USB.** Dependem do **driver GMSL no host**, casado com a
   versão do **JetPack/L4T**. O driver **não** é conteinerizável (é kernel).
 - ⚠️ **Performance vem da camada nativa** (GStreamer/DeepStream/TensorRT). Python só orquestra e
   trata eventos. **Nunca** processar cada pixel de cada frame em Python (numpy por frame = mata a
   performance).
-- **Caminho de escala:** módulo **Orin NX** (pino-compatível, tem NVENC) destrava H.265 por HW.
+- **Fallback de HW:** módulo **Orin Nano** (pino-compatível, **sem NVENC**) → encode por software
+  (`x264enc`, H.264). É o caminho degradado; o alvo primário (NX) usa NVENC.
 
 ## Componentes (alvo)
 

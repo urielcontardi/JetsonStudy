@@ -18,7 +18,7 @@ Para definições de termos, ver [`glossary.md`](glossary.md).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ HOST (Jetson Orin Nano) — fora do Docker                            │
+│ HOST (Jetson Orin NX) — fora do Docker                              │
 │   JetPack/L4T · Driver GMSL Stereolabs (kernel) · Tailscale · NTP   │
 ├─────────────────────────────────────────────────────────────────────┤
 │ CONTAINERS (docker-compose → futuramente K3s)                       │
@@ -46,10 +46,14 @@ nvarguscamerasrc(cam1) ┘                                                      
 * nvinfer/nvtracker: stub/desligado na Fase 1; modelo real na Fase 2.
 ```
 
-- **[A] Gravação contínua:** `x264enc` (software, preset rápido, **key-int = ~1 s**) →
-  **`hlssink2`** (ou `splitmuxsink` com muxer fragmentado) gerando **segmentos fMP4/CMAF de ~4s**
-  (configurável) + **playlist `.m3u8`** por câmera. Cada segmento fechado é registrado no índice.
-  Ver [ADR-0006](decisions/0006-mp4-padrao-splitmuxsink.md).
+- **[A] Gravação contínua:** encoder **configurável** (NVENC HW na Orin NX: `nvv4l2h265enc`;
+  `x264enc` SW como fallback na Nano — ver `recorder/pipeline.py` e
+  [ADR-0014](decisions/0014-encoder-configuravel-hw-sw.md)), **key-int ~1 s** → um **`tee`** após o
+  parser distribui o stream codificado para o `splitmuxsink` (muxer fragmentado) gerando
+  **segmentos fMP4/CMAF de ~4s** (configurável) + **playlist `.m3u8`** por câmera, e (opcional, em
+  dev) para um branch de **preview** (RTSP/WebRTC via MediaMTX). A seção de inferência
+  (`inference_stage`) fica cabeada porém **desligada** (`ai.enabled: false`) até a Fase 2. Cada
+  segmento fechado é registrado no índice. Ver [ADR-0006](decisions/0006-mp4-padrao-splitmuxsink.md).
 - **[B] Smart Record:** mantém em memória um cache de vídeo **já codificado**; ao receber um
   evento (local ou via mensagem), grava um clipe com janela pré/pós (~10 s, default).
 - **Eventos:** quando a IA detecta algo, o app publica um evento em **MQTT** (diretamente ou via
@@ -65,8 +69,8 @@ nvarguscamerasrc(cam1) ┘                                                      
   Layout hierárquico para evitar diretórios gigantes:
   `data/{camera}/{AAAA}/{MM}/{DD}/{HH}/seg-<epoch>.m4s` (+ `init.mp4` por câmera/parâmetros).
 - **GOP ~1 s:** keyframe a cada ~segundo permite **corte por cópia de stream** (sem recomprimir)
-  com granularidade de ~1 s — barato em CPU, essencial sem NVENC. (A precisão do corte vem do GOP,
-  não do tamanho do segmento.)
+  com granularidade de ~1 s — barato em CPU. (A precisão do corte vem do GOP, não do tamanho do
+  segmento.)
 - **Índice (SQLite):** tabela `segments(camera_id, t_inicio, t_fim, path, size, created_at)`.
   - Escrito pelo `recorder` ao fechar cada segmento.
   - Lido pela `clip-api` para mapear `[start,end]` → conjunto de segmentos.

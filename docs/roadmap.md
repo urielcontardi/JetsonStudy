@@ -10,9 +10,12 @@ acessível remotamente.
 - [x] **Provisionamento como código** (`deploy/`): scripts idempotentes `99-bootstrap.sh`
       (base + storage + Docker + NVIDIA runtime + Tailscale + NTP + driver GMSL) + `host-verify.sh`
       + runbook. Pré-requisito: JetPack flashado (passo 0). Ver `deploy/README.md`.
-- [x] `recorder` (Plano 1B): captura 2 câmeras (Argus) → encode H.264 SW (GOP ~1 s) →
-      `splitmuxsink` (segmentos fMP4 ~4 s) no NVMe. `nvinfer` **stub/ausente**. *(código pronto;
-      runtime GStreamer a validar no Jetson)*
+- [x] `recorder` (Plano 1B): captura 2 câmeras (Argus) → **encode HW H.265** (NVENC, config-driven;
+      `x264enc` SW como fallback na Nano) (GOP ~1 s) → `tee` → `splitmuxsink` (segmentos fMP4 ~4 s)
+      no NVMe. `nvinfer` **stub/desligado** (`ai.enabled: false`). *(código pronto; runtime
+      GStreamer a validar no Jetson)*
+- [x] **Preview ao vivo** (MediaMTX, RTSP/WebRTC) como ferramenta de dev (perfil `dev`, off por
+      padrão) — ver `docs/operations.md`.
 - [x] Índice **SQLite** + **playlist HLS** preenchidos pelo indexer a cada segmento.
 - [x] **Rotação por espaço** (limpa segmentos antigos acima de ~85% do disco).
 - [x] `clip-api` (FastAPI): `GET /clips?camera&start&end` → ffmpeg copy → MP4.
@@ -47,13 +50,13 @@ derrubar a gravação contínua.
 - [ ] Introduzir **registry** de imagens (GHCR/Harbor); CI buildando arm64.
 - [ ] **Rancher + Fleet (GitOps)** para deploy/atualização da frota.
 - [ ] NVIDIA device plugin + pod `recorder` privilegiado (câmera/GPU no K8s).
-- [ ] Avaliar módulo **Orin NX** (NVENC/H.265) onde encode/IA apertar.
+- [ ] **WebRTC em produção** (MediaMTX) para live view de baixa latência fora do bring-up.
+- [ ] Avaliar **NVIDIA Fleet Command** (frota NVIDIA-nativa) como alternativa ao Rancher Fleet.
 - [ ] Avaliar **Yocto / Rancher Elemental** para imagem de SO + OTA de host/driver.
 - [ ] Telemetria/observabilidade de frota.
 
 ## Itens deliberadamente adiados (YAGNI por enquanto)
 
 - Profundidade/3D (ZED SDK pesado) — só se um caso de uso exigir.
-- H.265 — depende de NVENC (Orin NX).
 - ZED Hub (nuvem da Stereolabs) — preferimos Tailscale + nuvem própria (sem lock-in).
 - Áudio, multi-tenant, autenticação avançada da API — quando houver necessidade real.

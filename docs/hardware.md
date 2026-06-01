@@ -4,7 +4,8 @@
 
 | Componente | Modelo | Papel |
 |---|---|---|
-| Compute | NVIDIA **Jetson Orin Nano** | Processa captura, encode (SW), IA |
+| Compute | NVIDIA **Jetson Orin NX** (primário) | Captura, **encode por HW (NVENC)**, IA |
+| Compute (fallback) | NVIDIA Jetson Orin Nano (pino-compatível) | Mesmo papel, mas **encode por software** (sem NVENC) |
 | Carrier | Mini Carrier / **ZED Box** (Stereolabs) + **ZED Link** GMSL2 | Conecta as câmeras GMSL2 |
 | Câmeras | **2× Stereolabs ZED X One S** | Captura de vídeo (monocular, global shutter) |
 | Storage | **NVMe** (M.2) | Buffer circular de vídeo + índice |
@@ -19,22 +20,28 @@
 - Para nosso uso (RGB + IA 2D), são lidas pelo **Argus (NVIDIA)**; o **ZED SDK pesado não é
   necessário**. Ver [ADR-0002](decisions/0002-stereolabs-so-driver-gmsl.md).
 
-## 3. ⚠️ Restrição crítica: Orin Nano não tem NVENC
+## 3. Encode: NVENC na Orin NX (HW); software como fallback (Nano)
 
-A NVIDIA confirma na documentação oficial ("Software Encode in Orin Nano") que o **Orin Nano não
-possui o engine NVENC** — apenas **NVDEC** (decode). Implicações:
+O **alvo primário é a Orin NX, que possui NVENC** (encoder de hardware). Implicações:
 
-- **Todo encode é por software (CPU)** via `libx264`/`x264enc`.
-- Benchmark de referência (RidgeRun, 1080p, 10 Mbps): `ultrafast` ~71 fps, `medium` ~24 fps,
-  `veryslow` ~5 fps em um único stream. **2 streams** consomem boa parte da CPU.
-- **H.265 por software em tempo real para 2 streams é inviável** → usamos **H.264 software**,
-  preset rápido, GOP ~1 s.
-- Tentativas de usar `nvv4l2h264enc`/`/dev/v4l2-nvenc` **falham** (não existe o device).
+- **Encode por hardware** via `nvv4l2h265enc`/`nvv4l2h264enc` — **H.265 viável e recomendado**
+  (arquivos ~2× menores → mais dias de retenção); os frames seguem em **NVMM** (GPU), sem a cópia
+  NVMM→CPU que o caminho por software exige.
+- **CPU livre** para a inferência (Fase 2) — não há mais o aperto de encode SW disputando CPU.
+- **Encoder selecionável por config** (`capture.codec` + `capture.encoder`) — ver
+  [ADR-0014](decisions/0014-encoder-configuravel-hw-sw.md).
 
-### Mitigações
-- **Perfil reduzido** na POC (1080p@15fps) para deixar CPU para a inferência.
+### Fallback: Orin Nano (sem NVENC)
+A NVIDIA confirma ("Software Encode in Orin Nano") que o **Orin Nano não possui NVENC** — só
+**NVDEC** (decode). Quando rodando na Nano:
+- **Encode por software** via `libx264`/`x264enc` (`encoder: sw`, `codec: h264`).
+- Benchmark de referência (RidgeRun, 1080p, 10 Mbps): `ultrafast` ~71 fps, `medium` ~24 fps em um
+  único stream — **2 streams** consomem boa parte da CPU, exigindo perfil reduzido (ex. 1080p@15).
+- **H.265 por software em tempo real é inviável** → na Nano, apenas H.264 software.
+
+### Mitigações (ambos os caminhos)
 - **Recorte por cópia de stream** (sem recomprimir) → não gasta CPU para gerar clipes.
-- **Caminho de escala: Orin NX** (ver §4).
+- Perfil **configurável** por device (res/fps/codec/encoder/bitrate) — validar on-device.
 
 ## 4. Caminho de escala: módulo Orin NX
 

@@ -31,21 +31,27 @@ Pense em **duas pistas**:
 - **GOP / keyframe** — vídeo comprimido tem quadros-chave (keyframes/I-frames) e quadros que
   dependem deles. **GOP curto (~1 s)** = keyframes frequentes → dá para **cortar por cópia** (sem
   recomprimir) com boa precisão.
-- **Cópia de stream (`-c copy`)** — recortar/concatenar vídeo **sem recomprimir**. Rápido e barato
-  (essencial sem NVENC). Corta nas bordas de keyframe.
+- **Cópia de stream (`-c copy`)** — recortar/concatenar vídeo **sem recomprimir**. Rápido e barato.
+  Corta nas bordas de keyframe.
 - **Codec H.264 / H.265** — formatos de compressão. H.265 comprime melhor (~metade do tamanho) mas
-  custa mais para codificar; **inviável por software em tempo real para 2 streams** no Orin Nano.
+  custa mais para codificar; **viável por hardware na Orin NX** (NVENC). Por software em tempo real
+  para 2 streams é inviável (caso do fallback Nano, que usa H.264 SW).
+- **`nvv4l2h265enc` / `nvv4l2h264enc`** — elementos GStreamer da NVIDIA que **codificam por
+  hardware** (NVENC). Usados na Orin NX. `bitrate` em **bits/s** e GOP via `iframeinterval`
+  (≠ `x264enc`, que usa kbit/s e `key-int-max`).
+- **`x264enc`** — encoder H.264 **por software** (libx264). Fallback quando não há NVENC (Orin Nano).
 - **Container MP4/MKV** — "embalagem" do vídeo. Usamos **MP4 padrão** (tocável em qualquer lugar),
   não o **SVO** proprietário da Stereolabs.
 
 ## Hardware NVIDIA
 
-- **Jetson Orin Nano** — módulo de compute de borda com GPU. ⚠️ **Sem NVENC** (encoder de hardware);
-  só **NVDEC** (decoder). Por isso o encode é por **software (CPU)**.
+- **Jetson Orin NX** — módulo de compute de borda com GPU; **alvo primário** do projeto. **Tem
+  NVENC** → encode por hardware (H.265 viável), CPU livre para a IA. Pino-compatível com o carrier
+  do Orin Nano.
+- **Jetson Orin Nano** — módulo **fallback** (pino-compatível). ⚠️ **Sem NVENC**; só **NVDEC**
+  (decoder). Nele o encode é por **software (CPU)** com `x264enc`.
 - **NVENC / NVDEC** — blocos de hardware para **codificar** / **decodificar** vídeo. Orin Nano só
   tem NVDEC. **Orin NX e AGX Orin têm NVENC.**
-- **Orin NX** — módulo **pino-compatível** com o carrier do Orin Nano, **com NVENC**. Caminho de
-  escala para H.265 por hardware **sem reprojetar a placa**.
 - **JetPack / L4T** — o "sistema operacional" do Jetson (Ubuntu + drivers NVIDIA). Base sobre a
   qual instalamos o driver GMSL e rodamos os containers.
 
@@ -78,6 +84,12 @@ Pense em **duas pistas**:
   Jetson mesmo atrás de NAT/4G, **sem abrir portas**. Como você alcança a Clip API remotamente.
   - **MagicDNS** — dá um **nome** a cada device (ex.: `orwell-01`).
   - **ACLs** — regras de quem pode acessar o quê.
+- **WebRTC** — protocolo de **vídeo ao vivo de baixa latência** (sub-segundo) direto no navegador.
+  Usado no preview de dev (e candidato a live view em produção). Mais "ao vivo" que HLS, que tem
+  latência de segundos.
+- **MediaMTX** — servidor leve de **RTSP/WebRTC** (antigo `rtsp-simple-server`). No Orwell roda como
+  serviço opcional de **preview** (perfil `dev`): o recorder empurra o stream e você assiste no VLC
+  (RTSP) ou navegador (WebRTC) pelo Tailscale.
 - **Docker** — **empacota** um serviço (código + dependências) numa **imagem** que roda igual em
   qualquer máquina. Um **container** é uma instância rodando dessa imagem.
 - **docker-compose** — descreve e sobe **vários containers** juntos (recorder, clip-api, uploader,
