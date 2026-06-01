@@ -43,19 +43,17 @@ def encoder_chain(profile: CaptureProfile) -> str:
 
 
 def build_source_chain(camera: CameraConfig, profile: CaptureProfile) -> str:
-    """Cadeia captura→encode (até h264parse). O sink é anexado em main.py.
+    """Cadeia captura→encode→parser (até o parser). O sink é anexado em main.py.
 
-    Orin Nano não tem NVENC → encode por software (x264enc). nvvidconv copia NVMM→CPU.
+    Encoder e parser são escolhidos por config (HW NVENC na Orin NX, x264enc SW como
+    fallback). Ver encoder_chain()/parser_element().
     """
-    kf = keyframe_interval(profile)
     return (
         f"nvarguscamerasrc sensor-id={camera.argus_sensor_id} ! "
         f"video/x-raw(memory:NVMM),width={profile.width},height={profile.height},"
         f"framerate={profile.fps}/1 ! "
-        f"nvvidconv ! video/x-raw,format=I420 ! "
-        f"x264enc speed-preset=superfast tune=zerolatency "
-        f"bitrate={profile.bitrate_kbps} key-int-max={kf} ! "
-        f"h264parse"
+        f"{encoder_chain(profile)} ! "
+        f"{parser_element(profile)}"
     )
 
 

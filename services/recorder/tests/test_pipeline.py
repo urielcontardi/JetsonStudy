@@ -14,16 +14,26 @@ def test_keyframe_interval_is_gop_times_fps():
     assert keyframe_interval(CaptureProfile(fps=15, gop_seconds=0.0)) == 1  # mínimo 1
 
 
-def test_build_source_chain_has_expected_elements_and_params():
+def test_build_source_chain_hw_h265():
     cam = CameraConfig(id="0", argus_sensor_id=2)
-    chain = build_source_chain(cam, CaptureProfile(width=1920, height=1080, fps=15,
-                                                   gop_seconds=1.0, bitrate_kbps=6000))
+    chain = build_source_chain(cam, CaptureProfile(width=1920, height=1080, fps=30,
+                                                   codec="h265", encoder="hw",
+                                                   gop_seconds=1.0, bitrate_kbps=8000))
     assert "nvarguscamerasrc sensor-id=2" in chain
     assert "width=1920,height=1080" in chain
-    assert "framerate=15/1" in chain
+    assert "framerate=30/1" in chain
+    assert "nvv4l2h265enc" in chain
+    assert "iframeinterval=30" in chain
+    assert chain.strip().endswith("h265parse")
+
+
+def test_build_source_chain_sw_h264_fallback():
+    cam = CameraConfig(id="1", argus_sensor_id=0)
+    chain = build_source_chain(cam, CaptureProfile(width=1280, height=720, fps=15,
+                                                   codec="h264", encoder="sw",
+                                                   gop_seconds=1.0, bitrate_kbps=4000))
     assert "x264enc" in chain
     assert "key-int-max=15" in chain
-    assert "bitrate=6000" in chain
     assert chain.strip().endswith("h264parse")
 
 
