@@ -1,7 +1,11 @@
-# Deploy do Orwell — do zero ao ar (Jetson Orin Nano)
+# Deploy do Orwell — do zero ao ar (Jetson Orin NX)
 
 Guia ponta-a-ponta. Objetivo: **placa zerada → gravando + acessível remotamente → containers sobem
 sozinhos no boot**. Tudo é registrado em `deploy/` (provisionamento como código — ADR-0013).
+
+> Alvo primário: **Orin NX** (encode por hardware, NVENC/H.265). A **Orin Nano** funciona como
+> fallback ajustando o encoder por config (`capture.encoder: sw`, `codec: h264`) — ver
+> [ADR-0014](docs/decisions/0014-encoder-configuravel-hw-sw.md).
 
 ## TL;DR (resumo)
 
@@ -55,7 +59,8 @@ Edite:
 - **Driver GMSL** (`GMSL_DRIVER_DEB`): baixe o `.deb` casando **placa + deserializer + L4T** em
   <https://www.stereolabs.com/developers/drivers>, ponha em `deploy/artifacts/` e aponte o nome.
 - `TS_AUTHKEY` (opcional; senão o Tailscale pede login interativo)
-- Câmeras e perfil de captura: `config/orwell.yaml` (padrão: 2 câmeras, 1080p@15fps, segmento 4s).
+- Câmeras e perfil de captura: `config/orwell.yaml` (padrão NX: 2 câmeras, **H.265 HW**, 1080p@30,
+  segmento 4s). Na Nano, use `encoder: sw` + `codec: h264`.
 
 ## Passo 2 — Provisionar o host (um comando)
 
@@ -123,10 +128,35 @@ git pull && docker compose --profile jetson build && sudo systemctl restart orwe
 `docker compose` → **K3s + Rancher Fleet** (GitOps) + **registry** de imagens. O `orwell.service`
 e os scripts `deploy/` podem virar imagem base / Rancher Elemental. Ver `docs/operations.md`.
 
+## Preview ao vivo das câmeras (dev)
+
+Para ver as câmeras ao vivo do Mac durante o bring-up (sem GUI no Jetson):
+```bash
+# em config/orwell.yaml: preview.enabled: true
+docker compose --profile dev up -d preview          # sobe o MediaMTX
+docker compose --profile jetson restart recorder
+```
+No Mac (via Tailscale): VLC → `rtsp://orwell-nx:8554/cam0`, ou navegador → `http://orwell-nx:8889/cam0`.
+Off por padrão; não pesa na gravação quando desligado. Ver `docs/operations.md` §1.1.
+
+## Validar o encoder por hardware (teste mais barato, antes dos containers)
+
+```bash
+gst-inspect-1.0 nvv4l2h265enc        # confirma que o elemento NVENC existe no seu JetPack
+gst-launch-1.0 nvarguscamerasrc sensor-id=0 num-buffers=150 ! \
+  'video/x-raw(memory:NVMM),width=1920,height=1080,framerate=30/1' ! \
+  nvv4l2h265enc bitrate=8000000 iframeinterval=30 ! h265parse ! mp4mux ! filesink location=/tmp/test.mp4
+# puxe pro Mac e toque:  scp orwell-nx:/tmp/test.mp4 .
+```
+É exatamente a cadeia que `recorder/pipeline.py` monta. Se `nvv4l2h265enc` não existir, ajuste o
+nome/props em `encoder_chain` ou use o fallback `encoder: sw` + `codec: h264`.
+
 ## Limitações conhecidas / a validar no device
 
-- Elementos GStreamer NVIDIA (`nvarguscamerasrc`/`nvvidconv`) e o muxer fragmentado do
-  `splitmuxsink` devem ser validados no Jetson (ver `docs/decisions/0006`).
+- Elementos GStreamer NVIDIA (`nvarguscamerasrc`, `nvv4l2h265enc`/`nvv4l2h264enc`) e o muxer
+  fragmentado do `splitmuxsink` devem ser validados no Jetson (ver `docs/decisions/0006` e a lista
+  em `deploy/provisioning-log.md`).
 - Tag da imagem DeepStream deve casar com o JetPack instalado.
 - `recorder` roda `privileged` com `/tmp/argus_socket` montado (daemon Argus do host).
-- IA (`nvinfer`) e o disparo evento→nuvem entram na **Fase 2** (o `uploader` já está pronto p/ receber).
+- IA (`nvinfer`) e o disparo evento→nuvem entram na **Fase 2** — a costura já está cabeada e
+  desligável (`ai.enabled: false`); o `uploader` já está pronto p/ receber.
