@@ -9,7 +9,7 @@ fragmentado devem ser validados no Jetson (JetPack/DeepStream) — ver docs/deci
 """
 from __future__ import annotations
 
-from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile
+from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile, PreviewConfig
 
 
 def keyframe_interval(profile: CaptureProfile) -> int:
@@ -71,6 +71,18 @@ def inference_stage(ai: AIConfig, num_cameras: int) -> str:
         "nvinfer config-file-path=$NVINFER_CONFIG ! "
         "nvtracker ! nvstreamdemux name=demux"
     )
+
+
+def preview_branch(preview: PreviewConfig, camera_id: str) -> str:
+    """Branch opcional do tee enviando o stream JÁ CODIFICADO para o MediaMTX (RTSP).
+
+    Desligado (preview.enabled=False) → string vazia (tee tem só o consumidor de
+    gravação, custo desprezível). Ligado → empurra para rtsp://.../cam<id>.
+    """
+    if not preview.enabled:
+        return ""
+    url = f"{preview.rtsp_base_url.rstrip('/')}/cam{camera_id}"
+    return f"rtspclientsink location={url}"
 
 
 def max_size_time_ns(profile: CaptureProfile) -> int:

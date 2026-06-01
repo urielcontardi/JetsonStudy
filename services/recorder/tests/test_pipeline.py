@@ -1,4 +1,4 @@
-from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile
+from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile, PreviewConfig
 from recorder.pipeline import (
     build_source_chain,
     encoder_chain,
@@ -6,6 +6,7 @@ from recorder.pipeline import (
     keyframe_interval,
     max_size_time_ns,
     parser_element,
+    preview_branch,
 )
 
 
@@ -87,3 +88,14 @@ def test_inference_stage_enabled_has_nvinfer_chain():
     assert "batch-size=2" in chain
     assert "nvinfer" in chain
     assert "nvtracker" in chain
+
+
+def test_preview_branch_disabled_is_empty():
+    assert preview_branch(PreviewConfig(enabled=False), camera_id="0") == ""
+
+
+def test_preview_branch_enabled_pushes_rtsp():
+    branch = preview_branch(
+        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"), camera_id="0")
+    assert "rtspclientsink" in branch
+    assert "rtsp://preview:8554/cam0" in branch
