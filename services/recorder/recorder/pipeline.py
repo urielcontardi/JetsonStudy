@@ -9,7 +9,7 @@ fragmentado devem ser validados no Jetson (JetPack/DeepStream) — ver docs/deci
 """
 from __future__ import annotations
 
-from orwell_shared.config import CameraConfig, CaptureProfile
+from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile
 
 
 def keyframe_interval(profile: CaptureProfile) -> int:
@@ -54,6 +54,22 @@ def build_source_chain(camera: CameraConfig, profile: CaptureProfile) -> str:
         f"framerate={profile.fps}/1 ! "
         f"{encoder_chain(profile)} ! "
         f"{parser_element(profile)}"
+    )
+
+
+def inference_stage(ai: AIConfig, num_cameras: int) -> str:
+    """Costura de IA (Fase 2). Desligada (ai.enabled=False) → string vazia.
+
+    Ligada → prefixo de inferência batched para inserir entre as fontes e os encoders.
+    A montagem em runtime (probe NvDsObjectMeta → MQTT) fica em main.py; aqui só a
+    descrição, validada on-device. Ver docs/superpowers/specs/2026-06-01-orwell-nx-rewrite-design.md.
+    """
+    if not ai.enabled:
+        return ""
+    return (
+        f"nvstreammux name=mux batch-size={num_cameras} ! "
+        "nvinfer config-file-path=$NVINFER_CONFIG ! "
+        "nvtracker ! nvstreamdemux name=demux"
     )
 
 

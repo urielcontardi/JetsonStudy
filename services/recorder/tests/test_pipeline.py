@@ -1,7 +1,8 @@
-from orwell_shared.config import CameraConfig, CaptureProfile
+from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile
 from recorder.pipeline import (
     build_source_chain,
     encoder_chain,
+    inference_stage,
     keyframe_interval,
     max_size_time_ns,
     parser_element,
@@ -74,3 +75,15 @@ def test_encoder_chain_sw_h264_uses_x264_and_kbps_and_convert():
     assert "key-int-max=15" in chain
     assert "nvvidconv" in chain             # baixa NVMM -> CPU (I420)
     assert "I420" in chain
+
+
+def test_inference_stage_disabled_is_empty():
+    assert inference_stage(AIConfig(enabled=False), num_cameras=2) == ""
+
+
+def test_inference_stage_enabled_has_nvinfer_chain():
+    chain = inference_stage(AIConfig(enabled=True), num_cameras=2)
+    assert "nvstreammux" in chain
+    assert "batch-size=2" in chain
+    assert "nvinfer" in chain
+    assert "nvtracker" in chain
