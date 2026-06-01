@@ -17,6 +17,31 @@ def keyframe_interval(profile: CaptureProfile) -> int:
     return max(1, round(profile.gop_seconds * profile.fps))
 
 
+def parser_element(profile: CaptureProfile) -> str:
+    """Parser GStreamer conforme o codec."""
+    return "h265parse" if profile.codec == "h265" else "h264parse"
+
+
+def encoder_chain(profile: CaptureProfile) -> str:
+    """Cadeia de encode conforme codec/encoder.
+
+    HW (NVENC, Orin NX): nvv4l2h26Xenc, bitrate em bits/s, GOP via iframeinterval,
+    frames seguem em NVMM (sem cópia p/ CPU).
+    SW (x264enc, fallback Nano): nvvidconv baixa NVMM->CPU (I420), bitrate em kbit/s,
+    GOP via key-int-max.
+    """
+    kf = keyframe_interval(profile)
+    if profile.encoder == "hw":
+        elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
+        return f"{elem} bitrate={profile.bitrate_kbps * 1000} iframeinterval={kf}"
+    # software (somente h264; h265/sw é rejeitado na validação da config)
+    return (
+        "nvvidconv ! video/x-raw,format=I420 ! "
+        f"x264enc speed-preset=superfast tune=zerolatency "
+        f"bitrate={profile.bitrate_kbps} key-int-max={kf}"
+    )
+
+
 def build_source_chain(camera: CameraConfig, profile: CaptureProfile) -> str:
     """Cadeia captura→encode (até h264parse). O sink é anexado em main.py.
 
