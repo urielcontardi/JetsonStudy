@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from orwell_shared.config import OrwellConfig, load_config
+import pytest
+from pydantic import ValidationError
+
+from orwell_shared.config import CaptureProfile, OrwellConfig, load_config
 
 YAML = """
 device_name: orwell-01
@@ -49,3 +52,26 @@ def test_env_overrides_scalar(tmp_path: Path, monkeypatch):
     cfg = load_config(p)
     assert cfg.retention.disk_high_watermark_pct == 70
     assert cfg.device_name == "orwell-99"
+
+
+def test_capture_defaults_to_h265_hw():
+    prof = CaptureProfile()
+    assert prof.codec == "h265"
+    assert prof.encoder == "hw"
+    assert prof.fps == 30
+
+
+def test_h265_software_is_rejected():
+    with pytest.raises(ValidationError):
+        CaptureProfile(codec="h265", encoder="sw")
+
+
+def test_h264_software_is_allowed():
+    prof = CaptureProfile(codec="h264", encoder="sw")
+    assert prof.encoder == "sw"
+
+
+def test_ai_and_preview_default_disabled():
+    cfg = OrwellConfig()
+    assert cfg.ai.enabled is False
+    assert cfg.preview.enabled is False
