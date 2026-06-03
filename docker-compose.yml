@@ -1,13 +1,4 @@
 services:
-  broker:
-    image: eclipse-mosquitto:2
-    restart: unless-stopped
-    volumes:
-      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - mosquitto-data:/mosquitto/data
-    ports:
-      - "1883:1883"
-
   clip-api:
     build:
       context: .
@@ -20,30 +11,16 @@ services:
       - ${ORWELL_DATA_DIR:-./data}:/data
     ports:
       - "8080:8080"
-    depends_on: [broker]
-
-  uploader:
-    build:
-      context: .
-      dockerfile: services/uploader/Dockerfile
-    restart: unless-stopped
-    environment:
-      ORWELL_CONFIG: /app/config/orwell.yaml
-      ORWELL_INDEX_DB: /data/index.sqlite
-    volumes:
-      - ${ORWELL_DATA_DIR:-./data}:/data
-      - ./config:/app/config:ro
-    depends_on: [broker]
 
   # ── recorder: SÓ no Jetson (precisa de GStreamer/NVIDIA + câmeras GMSL). ──
-  # Suba-o só no device com:  docker compose --profile jetson up -d
+  # Suba com:  docker compose --profile jetson up -d
   recorder:
     profiles: ["jetson"]
     build:
       context: .
       dockerfile: services/recorder/Dockerfile
     restart: unless-stopped
-    runtime: nvidia               # NVIDIA Container Runtime (default-runtime também é nvidia)
+    runtime: nvidia               # NVIDIA Container Runtime
     privileged: true              # acesso às câmeras GMSL/Argus
     ipc: host
     environment:
@@ -69,6 +46,3 @@ services:
     ports:
       - "8554:8554"
       - "8889:8889"
-
-volumes:
-  mosquitto-data:

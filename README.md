@@ -13,9 +13,9 @@ que dispara o **envio de ~10 s de vídeo** de cada evento detectado para a nuvem
 
 ```
 ZED X One S ×2  →  [recorder: DeepStream]  →  NVMe (segmentos + índice SQLite)
-   (GMSL2)            │  encode HW H.265 (NVENC)  │
-                      │  tee + IA (Fase 2)        ├─→ [clip-api: FastAPI] ──(Tailscale)──→ você
-                      └─→ evento (MQTT) ─→ [uploader] ─→ ☁️ nuvem (S3 plugável)
+   (GMSL2)            encode HW H.265 (NVENC)
+                      tee + IA (Fase 2)    ├─→ [clip-api: FastAPI] ──(Tailscale)──→ você
+                                           └─→ [preview: MediaMTX] (dev only, RTSP/WebRTC)
 ```
 
 - **Plataforma:** Jetson Orin NX (NVENC → encode por hardware; Nano = fallback SW), JetPack + driver GMSL Stereolabs.
@@ -26,15 +26,14 @@ ZED X One S ×2  →  [recorder: DeepStream]  →  NVMe (segmentos + índice SQL
 
 | Serviço | **Função** |
 |---|---|
-| `recorder` | Captura, encode, gravação contínua, Smart Record, eventos |
+| `recorder` | Captura, encode, gravação contínua |
 | `clip-api` | `GET /clips?camera&start&end` → MP4 |
-| `uploader` | Evento → recorta ~10 s → nuvem |
-| `broker` | MQTT (Mosquitto) |
+| `preview` *(dev)* | Stream ao vivo RTSP/WebRTC via MediaMTX |
 
 ## Status / Roadmap
 
 - [ ] **Fase 1 (POC):** gravação contínua 2 câmeras + rotação + índice + Clip API via Tailscale.
-- [ ] **Fase 2:** modelo TensorRT real → eventos → upload de clipes.
+- [ ] **Fase 2:** modelo TensorRT real → eventos → upload de clipes (transporte a definir).
 - [ ] **Fase 3:** K3s + Rancher Fleet, registry, WebRTC em produção, avaliar Fleet Command / Yocto.
 
 Detalhes em [`docs/roadmap.md`](docs/roadmap.md).

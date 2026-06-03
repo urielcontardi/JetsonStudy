@@ -70,11 +70,8 @@ Pense em **duas pistas**:
   - **`nvmsgbroker`** — envia eventos/metadados para a nuvem (Kafka, MQTT, Azure IoT, AMQP).
   - **`pyds`** — bindings **Python** do DeepStream. Permite escrever o app em Python.
 
-## Mensageria e dados
+## Dados e armazenamento
 
-- **MQTT** — protocolo de **mensageria leve** (publish/subscribe). Um serviço "publica" um evento,
-  outro "assina". Desacopla quem detecta (recorder) de quem age (uploader).
-- **Mosquitto** — um broker MQTT leve e popular. Rodamos local como o `broker`.
 - **SQLite** — banco de dados em um **único arquivo**, sem servidor. Usamos como **índice** dos
   segmentos gravados (a "tabela de conteúdo" do DVR).
 
@@ -92,8 +89,7 @@ Pense em **duas pistas**:
   (RTSP) ou navegador (WebRTC) pelo Tailscale.
 - **Docker** — **empacota** um serviço (código + dependências) numa **imagem** que roda igual em
   qualquer máquina. Um **container** é uma instância rodando dessa imagem.
-- **docker-compose** — descreve e sobe **vários containers** juntos (recorder, clip-api, uploader,
-  broker). Usado na POC.
+- **docker-compose** — descreve e sobe **vários containers** juntos (recorder, clip-api). Usado na POC.
 - **Registry** — a **"App Store" das imagens**: onde a imagem buildada **mora** para os devices
   **baixarem** (`pull`). Ex.: GHCR, Harbor, ECR. **Entra na fase de frota (com o Rancher).** Na POC,
   buildamos local (sem registry).

@@ -88,14 +88,14 @@ Confere: L4T, Docker+runtime nvidia, `/dev/video*` (câmeras), Tailscale, NTP, d
 ```bash
 docker compose --profile jetson build
 ```
-- `clip-api`, `uploader`, `broker`: leves.
+- `clip-api`: leve.
 - `recorder`: usa a base **DeepStream/L4T** (grande) — só builda no Jetson. Ajuste a tag em
   `services/recorder/Dockerfile` (`DEEPSTREAM_IMAGE`) para casar seu JetPack (ver `docs/hardware.md`).
 
 ## Passo 5 — Subir (e a partir daí, sozinho no boot)
 
 ```bash
-sudo systemctl start orwell      # sobe broker + clip-api + uploader + recorder
+sudo systemctl start orwell      # sobe clip-api + recorder
 sudo systemctl status orwell
 ```
 A partir daqui, **todo reboot sobe os containers automaticamente** (systemd + restart policy).
@@ -159,4 +159,4 @@ nome/props em `encoder_chain` ou use o fallback `encoder: sw` + `codec: h264`.
 - Tag da imagem DeepStream deve casar com o JetPack instalado.
 - `recorder` roda `privileged` com `/tmp/argus_socket` montado (daemon Argus do host).
 - IA (`nvinfer`) e o disparo evento→nuvem entram na **Fase 2** — a costura já está cabeada e
-  desligável (`ai.enabled: false`); o `uploader` já está pronto p/ receber.
+  desligável (`ai.enabled: false`).

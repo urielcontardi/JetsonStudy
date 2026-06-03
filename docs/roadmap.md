@@ -19,7 +19,6 @@ acessível remotamente.
 - [x] Índice **SQLite** + **playlist HLS** preenchidos pelo indexer a cada segmento.
 - [x] **Rotação por espaço** (limpa segmentos antigos acima de ~85% do disco).
 - [x] `clip-api` (FastAPI): `GET /clips?camera&start&end` → ffmpeg copy → MP4.
-- [x] `broker` (Mosquitto) e `uploader` **no esqueleto** (sem modelo ainda).
 - [x] `docker-compose.yml` subindo os serviços; **build local**; auto-start via `orwell.service`.
 - [ ] **Validar on-device** (Jetson): pipeline GStreamer, tag DeepStream, concat fMP4, câmeras.
 - [ ] Acesso via **Tailscale** (provisionado por `deploy/60-tailscale.sh`).
@@ -33,9 +32,8 @@ um intervalo arbitrário de vídeo de fora pela Clip API via Tailscale.
 
 - [ ] Treinar/obter modelo de detecção; converter para **engine TensorRT**.
 - [ ] Ligar `nvinfer` (+ `nvtracker` se necessário) no pipeline do `recorder`.
-- [ ] Publicar eventos em **MQTT** (`orwell/events`).
-- [ ] `uploader`: assinar eventos → obter clipe de ~10 s (Smart Record ou extração dos segmentos)
-      → enviar via backend de storage.
+- [ ] Definir mecanismo de transporte de eventos (gRPC ou outro — a decidir).
+- [ ] Serviço de upload: recebe evento → obtém clipe de ~10 s → envia via backend de storage.
 - [ ] Backend **S3** funcional; interface plugável validada.
 - [ ] Validar **orçamento de CPU** (encode SW + inferência) on-device; tunar perfil.
 

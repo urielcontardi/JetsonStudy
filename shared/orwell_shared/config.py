@@ -38,19 +38,6 @@ class RetentionConfig(BaseModel):
     disk_high_watermark_pct: int = 85
 
 
-class BrokerConfig(BaseModel):
-    host: str = "broker"
-    port: int = 1883
-    events_topic: str = "orwell/events"
-
-
-class CloudConfig(BaseModel):
-    backend: str = "s3"           # s3 | local
-    bucket: str | None = None
-    prefix: str = "orwell/"
-    local_dir: str = "/var/lib/orwell/uploads"
-
-
 class AIConfig(BaseModel):
     enabled: bool = False        # Fase 1 = false; Fase 2 liga nvinfer/nvtracker
     nvinfer_config: str | None = None
@@ -67,8 +54,6 @@ class OrwellConfig(BaseModel):
     cameras: list[CameraConfig] = Field(default_factory=list)
     capture: CaptureProfile = Field(default_factory=CaptureProfile)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
-    broker: BrokerConfig = Field(default_factory=BrokerConfig)
-    cloud: CloudConfig = Field(default_factory=CloudConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
     preview: PreviewConfig = Field(default_factory=PreviewConfig)
 

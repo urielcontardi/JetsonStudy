@@ -22,12 +22,6 @@ capture:
 retention:
   data_dir: /var/lib/orwell/data
   disk_high_watermark_pct: 85
-broker:
-  host: broker
-  events_topic: orwell/events
-cloud:
-  backend: s3
-  bucket: my-bucket
 """
 
 
@@ -41,7 +35,6 @@ def test_load_config_parses_yaml(tmp_path: Path):
     assert cfg.cameras[0].id == "0"
     assert cfg.capture.segment_seconds == 4.0
     assert cfg.retention.disk_high_watermark_pct == 85
-    assert cfg.cloud.bucket == "my-bucket"
 
 
 def test_env_overrides_scalar(tmp_path: Path, monkeypatch):

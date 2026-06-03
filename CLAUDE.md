@@ -19,11 +19,11 @@ para a nuvem. Acesso remoto via **Tailscale**; futura gestão de frota via **Ran
 - **Tudo em Python.**
 - **Plano de mídia/IA:** **DeepStream** (NVIDIA) via `pyds`. Captura por **Argus**
   (`nvarguscamerasrc`), inferência por **TensorRT**.
-- **Plano de controle:** **FastAPI** (Clip API) + worker Python (Uploader).
+- **Plano de controle:** **FastAPI** (Clip API).
 - **Da Stereolabs usamos APENAS o driver GMSL** (kernel, no host). **Nada de ZED SDK pesado**
   (só entraria se um dia precisarmos de profundidade/3D).
 - **Containers** orquestrados por **docker-compose** (POC) → **K3s + Rancher Fleet** (frota).
-- **MQTT** (Mosquitto) como barramento de eventos. **SQLite** como índice de segmentos.
+- **SQLite** como índice de segmentos. Sem broker; transporte de eventos para a Fase 2 (a definir).
 
 ## Restrições que NÃO podem ser esquecidas
 
@@ -43,10 +43,9 @@ para a nuvem. Acesso remoto via **Tailscale**; futura gestão de frota via **Ran
 
 | Serviço | Papel | Tech |
 |---|---|---|
-| `recorder` | Captura + encode + gravação contínua + Smart Record + eventos | DeepStream/pyds |
+| `recorder` | Captura + encode + gravação contínua | DeepStream/pyds |
 | `clip-api` | `GET /clips?camera&start&end` → MP4 (ffmpeg copy) | FastAPI |
-| `uploader` | Evento MQTT → recorta 10 s → nuvem (backend plugável, S3 default) | Python worker |
-| `broker` | Barramento de eventos | Mosquitto/MQTT |
+| `preview` *(dev)* | Stream ao vivo RTSP/WebRTC | MediaMTX |
 
 Gravação: segmentos **fMP4/CMAF de ~4 s** (configurável) + **playlist HLS** por câmera, **GOP ~1 s**,
 rotação por espaço em disco. Clipes por cópia de stream (`ffmpeg -c copy`). Ver ADR-0006.
@@ -54,7 +53,7 @@ rotação por espaço em disco. Clipes por cópia de stream (`ffmpeg -c copy`). 
 ## Estrutura
 
 ```
-config/      services/{recorder,clip-api,uploader}/   shared/   models/   deploy/   docs/   tests/
+config/      services/{recorder,clip-api}/   shared/   models/   deploy/   docs/   tests/
 ```
 
 ## Convenções
@@ -75,7 +74,7 @@ config/      services/{recorder,clip-api,uploader}/   shared/   models/   deploy
 
 - `docs/superpowers/specs/2026-05-31-orwell-dvr-borda-design.md` — **spec/design** (fonte de verdade).
 - `docs/architecture.md` — arquitetura detalhada, interfaces, fluxos.
-- `docs/glossary.md` — glossário didático (GStreamer, DeepStream, TensorRT, Argus, Smart Record, MQTT, Tailscale, K3s, Rancher, registry…).
+- `docs/glossary.md` — glossário didático (GStreamer, DeepStream, TensorRT, Argus, Tailscale, K3s, Rancher, registry…).
 - `docs/hardware.md` — hardware, ZED X One S, driver GMSL, Orin Nano vs Orin NX.
 - `docs/operations.md` — acesso remoto (Tailscale), atualização (compose → Rancher), provisionamento.
 - `deploy/` — **provisionamento como código**: scripts idempotentes (`99-bootstrap.sh`) + runbook
@@ -83,7 +82,7 @@ config/      services/{recorder,clip-api,uploader}/   shared/   models/   deploy
 - `DEPLOY.md` — **guia de deploy ponta-a-ponta** (placa zerada → no ar; containers sobem no boot via
   `orwell.service`).
 - Planos de implementação: `docs/superpowers/plans/`. Serviços implementados em `shared/` +
-  `services/{recorder,clip-api,uploader}/` (ver `services/README.md`). **Ainda não validados
+  `services/{recorder,clip-api}/` (ver `services/README.md`). **Ainda não validados
   on-device** (dev em macOS; alvo é o Jetson).
 - `docs/roadmap.md` — faseamento POC → escala.
 - `docs/decisions/` — ADRs (decisões + porquês).

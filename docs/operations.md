@@ -55,7 +55,7 @@ Tudo em containers; nada roda no host além do que é kernel/driver (driver GMSL
 5. **CI** builda a imagem arm64 → push no registry → Fleet aplica.
 
 ### Separação de camadas (regra de ouro)
-- **Rancher/K3s atualizam os _containers_** (recorder, clip-api, uploader, broker).
+- **Rancher/K3s atualizam os _containers_** (recorder, clip-api).
 - **Driver GMSL + JetPack + Tailscale vivem no _host_.** Atualizá-los é **outra camada**
   (provisionamento de SO) → Yocto / **Rancher Elemental** no futuro. **Não misturar.**
 
@@ -85,6 +85,6 @@ Fluxo "placa zerada → no ar":
 
 ## 4. Backups / nuvem
 
-- Clipes de evento vão para a **nuvem** via `uploader` (backend plugável, **S3 por padrão**).
+- Clipes de evento irão para a **nuvem** via serviço de upload (Fase 2, backend plugável S3).
 - O buffer contínuo **não** é enviado para a nuvem (fica no NVMe, rotacionado). Só os recortes
   (eventos ou GET sob demanda) saem do device.

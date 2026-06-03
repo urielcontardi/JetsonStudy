@@ -4,8 +4,7 @@
 - **Status:** Aprovado (brainstorming) — pronto para plano de implementação
 - **Autores:** Uriel + Claude (consultoria de arquitetura)
 - **Substitui (parcialmente):** [`2026-05-31-orwell-dvr-borda-design.md`](2026-05-31-orwell-dvr-borda-design.md)
-  na parte de **hardware-alvo e encode**. A arquitetura macro (4 serviços, índice, HLS, Tailscale,
-  storage plugável) permanece.
+  na parte de **hardware-alvo e encode**. A arquitetura macro (índice, HLS, Tailscale) permanece.
 
 ---
 
@@ -72,7 +71,7 @@ rodar DeepStream + encode HW + (futuramente) inferência sem o aperto que existi
 - **Tudo em Python** (orquestração) sobre a camada nativa (GStreamer/DeepStream/TensorRT).
 - **Plano de mídia:** aplicação **DeepStream** via GStreamer/`gi` (e `pyds` na Fase 2 para ler
   metadados de inferência). Captura por **Argus** (`nvarguscamerasrc`).
-- **Plano de controle:** **FastAPI** (Clip API) + worker Python (Uploader).
+- **Plano de controle:** **FastAPI** (Clip API).
 - **Da Stereolabs, apenas o driver GMSL** (kernel, no host).
 - **Containers:** docker-compose (POC) → K3s + Rancher (frota, Fase 3).
 
@@ -97,10 +96,7 @@ A Orin NX **possui NVENC**. Portanto:
    câmera com a seção de inferência **desligável** (ver §6.3).
 2. **`clip-api`** — FastAPI. `GET /clips?camera&start&end` → consulta o índice → seleciona
    segmentos → **`ffmpeg -c copy`** → MP4. Exposta via Tailscale.
-3. **`uploader`** — worker. Assina MQTT → (Fase 2) obtém clipe de ~10 s → envia via **backend de
-   storage plugável** (S3 por padrão). Na Fase 1, esqueleto.
-4. **`broker`** — **Mosquitto** (MQTT) local; barramento de eventos recorder ↔ uploader.
-5. **`preview`** *(perfil `dev`, opcional)* — **MediaMTX** servindo **RTSP/WebRTC** para preview de
+3. **`preview`** *(perfil `dev`, opcional)* — **MediaMTX** servindo **RTSP/WebRTC** para preview de
    câmera ao vivo durante o desenvolvimento. Alimentado por um branch do `tee` do recorder,
    **gated por `preview.enabled`** (off por padrão; não pesa na gravação quando desligado).
 
@@ -143,7 +139,7 @@ Com `preview.enabled: false` o `tee` tem um único consumidor (gravação) — c
 ```
 [cam0,cam1] → nvstreammux(batch=N) → nvinfer → nvtracker → nvstreamdemux
             → [por câmera: <ENCODER> → <PARSER> → splitmuxsink]
-   probe no src pad do nvinfer/nvtracker: lê NvDsObjectMeta → publica evento MQTT (orwell/events)
+   probe no src pad do nvinfer/nvtracker: lê NvDsObjectMeta → dispara evento (Fase 2)
 ```
 Ligar a IA = `ai.enabled: true` + prover engine TensorRT e config do `nvinfer` + adicionar o probe.
 **O caminho de gravação/encoder/sink não muda entre as fases.**
@@ -154,15 +150,14 @@ Ligar a IA = `ai.enabled: true` + prover engine TensorRT e config do `nvinfer` +
 1. **Gravação contínua (sempre on):** câmera → DeepStream → encode (HW) → segmentos + índice.
 2. **GET sob demanda (humano via Tailscale):** clip-api → índice → `ffmpeg -c copy` → MP4.
 3. **Preview ao vivo (dev, opcional):** tee do recorder → MediaMTX → RTSP/WebRTC no Mac (VLC/browser).
-4. **Evento de IA (Fase 2):** `nvinfer` detecta → MQTT → uploader → recorta ~10 s → nuvem.
+4. **Evento de IA (Fase 2):** `nvinfer` detecta → transporte a definir → serviço de upload → recorta ~10 s → nuvem.
 
 ### 6.5 Interfaces (contratos — inalterados)
 - **Clip API:** `GET /clips?camera={id}&start={iso8601}&end={iso8601}` → `200` MP4
   (`Content-Type: video/mp4`); `404` se fora da janela retida. `GET /healthz`, `/cameras`,
   `/segments`.
-- **Evento MQTT** (`orwell/events`): `{ camera_id, ts_event, label, score, pre_s, post_s }` (Fase 2).
-- **Backend de storage:** `put(clip_path, metadata) -> uri` (S3 padrão).
 - **Índice:** `add_segment(...)`, `query(camera, start, end)` em `shared`.
+- Evento de IA (Fase 2): schema e transporte a definir.
 
 ## 7. Configuração (12-factor)
 
@@ -220,13 +215,12 @@ Dois eixos (ver [`operations.md`](../../operations.md)):
 
 ```
 orwell/
-  docker-compose.yml          # broker, clip-api, uploader, recorder(jetson), preview(dev)
+  docker-compose.yml          # clip-api, recorder(jetson), preview(dev)
   config/                     # orwell.yaml (+ nvinfer/tracker na Fase 2; mediamtx.yml dev)
   services/
     recorder/                 # pipeline.py (puro/testável) · indexer.py · main.py (gi/Gst)
     clip-api/                 # FastAPI (main · settings)
-    uploader/                 # handler · main + backends de storage
-  shared/orwell_shared/       # config · index · paths · clips · events · retention · storage/*
+  shared/orwell_shared/       # config · index · paths · clips · retention
   models/                     # engines TensorRT (Fase 2; gitignored)
   deploy/                     # provisionamento como código (host)
   docs/                       # documentação + ADRs
@@ -242,8 +236,7 @@ orwell/
   - `codec=h265 + encoder=sw` → erro de validação;
   - builder da costura de IA: `ai.enabled=false` → pipeline simples; `true` → cadeia com
     `nvstreammux/nvinfer/nvtracker` (montagem testável como string, runtime on-device).
-- **`shared`:** `index`, `clips`, `retention`, `paths`, `config` (incl. validação encoder/codec),
-  `storage`, `events` — testes unitários.
+- **`shared`:** `index`, `clips`, `retention`, `paths`, `config` (incl. validação encoder/codec) — testes unitários.
 - **`clip-api`:** testes de rota (índice fake → seleção de segmentos → resposta).
 - **On-device (Jetson):** runtime `gi`/Gst, elementos NVIDIA (`nvarguscamerasrc`, `nvv4l2*enc`),
   concat fMP4, câmeras Argus, MediaMTX. **Não testável no macOS.**
@@ -269,8 +262,8 @@ orwell/
 - **Fase 1 (esta reescrita):** DVR na **Orin NX** com **encode HW (H.265) config-driven**, Clip API
   via Tailscale, costura de IA pronta (desligada), preview ao vivo (dev). → **DVR funcional e
   acessível do Mac.**
-- **Fase 2 (logo em seguida):** ligar `nvinfer` (modelo TensorRT) → eventos MQTT → `uploader` →
-  upload de clipes de evento. Avaliar **WebRTC** em produção.
+- **Fase 2 (logo em seguida):** ligar `nvinfer` (modelo TensorRT) → eventos → upload de clipes de
+  evento (transporte a definir na Fase 2). Avaliar **WebRTC** em produção.
 - **Fase 3:** K3s + Rancher Fleet; registry; avaliar **NVIDIA Fleet Command**; OTA de host.
 
 ## 13. Riscos e mitigações
