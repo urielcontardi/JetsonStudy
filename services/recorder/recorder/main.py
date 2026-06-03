@@ -69,7 +69,7 @@ def _probe_camera(Gst, sensor_id: int) -> bool:
     try:
         pipe = Gst.parse_launch(
             f"nvarguscamerasrc sensor-id={sensor_id} num-buffers=1 ! "
-            "video/x-raw(memory:NVMM),width=640,height=480,framerate=30/1 ! fakesink"
+            "video/x-raw(memory:NVMM) ! fakesink"
         )
         pipe.set_state(Gst.State.PLAYING)
         bus = pipe.get_bus()

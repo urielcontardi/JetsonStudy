@@ -49,7 +49,7 @@ def build_source_chain(camera: CameraConfig, profile: CaptureProfile) -> str:
     fallback). Ver encoder_chain()/parser_element().
     """
     return (
-        f"nvarguscamerasrc sensor-id={camera.argus_sensor_id} ! "
+        f"nvarguscamerasrc sensor-id={camera.argus_sensor_id} sensor-mode=2 ! "
         f"video/x-raw(memory:NVMM),width={profile.width},height={profile.height} ! "
         f"{encoder_chain(profile)} ! "
         f"{parser_element(profile)}"
