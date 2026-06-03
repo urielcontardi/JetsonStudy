@@ -15,9 +15,8 @@ WORKDIR /app
 
 # Instala a lib compartilhada (sem extras: recorder não usa fastapi/boto3).
 # --no-deps evita reinstalar libs já presentes na base; pydantic/pyyaml entram explicitamente.
-COPY shared/ /src/shared/
-COPY pyproject.toml /src/
-RUN pip3 install --no-cache-dir /src
+COPY shared/orwell_shared /app/orwell_shared
+RUN pip3 install --no-cache-dir "pydantic>=2.6" "pyyaml>=6.0"
 
 COPY services/recorder/recorder /app/recorder
 COPY config /app/config
