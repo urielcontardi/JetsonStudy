@@ -69,13 +69,24 @@ def _probe_camera(Gst, sensor_id: int) -> bool:
     try:
         pipe = Gst.parse_launch(
             f"nvarguscamerasrc sensor-id={sensor_id} num-buffers=1 ! "
-            "video/x-raw(memory:NVMM) ! fakesink"
+            "video/x-raw(memory:NVMM) ! fakesink sync=false"
         )
         pipe.set_state(Gst.State.PLAYING)
         bus = pipe.get_bus()
-        msg = bus.timed_pop_filtered(3_000_000_000, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+        found = False
+        deadline = 4_000_000_000  # 4s total
+        while True:
+            msg = bus.timed_pop_filtered(deadline, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+            if msg is None:
+                break
+            if msg.type == Gst.MessageType.ERROR:
+                found = False
+                break
+            if msg.type == Gst.MessageType.EOS:
+                found = True
+                break
         pipe.set_state(Gst.State.NULL)
-        return msg is not None and msg.type == Gst.MessageType.EOS
+        return found
     except Exception:
         return False
 
