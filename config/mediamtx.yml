@@ -9,9 +9,8 @@ hlsAddress: :8888
 webrtc: yes
 webrtcAddress: :8889
 # Anuncia o IP da Jetson para o ICE — necessário quando o container está atrás de NAT/bridge
-webrtcICEHostAddresses: ["10.8.64.33"]
-# Fallback TCP para ICE quando UDP bloqueado
-webrtcICETCPAddress: :8189
+webrtcAdditionalHosts: ["10.8.64.33"]
+webrtcIPsFromInterfaces: yes
 
 paths:
   all_others:
