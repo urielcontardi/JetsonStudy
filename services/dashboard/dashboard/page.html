@@ -16,28 +16,34 @@
   .card-body { padding: 1.5rem; }
 
   /* Docs */
-  .route { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; align-items: start; padding: 0.75rem 0; border-bottom: 1px solid #1e2a3a; }
+  .route { padding: 0.75rem 0; border-bottom: 1px solid #1e2a3a; }
   .route:last-child { border-bottom: none; }
-  .method { background: #0ea5e9; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; font-family: monospace; align-self: center; }
-  .method.get { background: #10b981; }
-  .route-info { display: flex; flex-direction: column; gap: 0.2rem; }
-  .route-path { font-family: monospace; font-size: 0.875rem; color: #e2e8f0; }
-  .route-desc { font-size: 0.8rem; color: #64748b; }
-  .route-params { font-family: monospace; font-size: 0.75rem; color: #38bdf8; }
+  .route-top { display: flex; align-items: center; gap: 0.75rem; }
+  .method { background: #10b981; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; font-family: monospace; flex-shrink: 0; }
+  .route-path { font-family: monospace; font-size: 0.875rem; color: #e2e8f0; flex: 1; }
+  .route-desc { font-size: 0.8rem; color: #64748b; margin: 0.25rem 0 0.5rem 2.5rem; }
+  .route-form { margin-left: 2.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .route-input { background: #0f1117; border: 1px solid #1e2a3a; color: #e2e8f0; padding: 0.3rem 0.6rem; border-radius: 5px; font-size: 0.8rem; font-family: monospace; width: 220px; }
+  .route-input:focus { outline: none; border-color: #0ea5e9; }
+  .btn-run { padding: 0.3rem 0.8rem; background: #0ea5e9; color: #fff; border: none; border-radius: 5px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+  .btn-run:hover { opacity: 0.85; }
+  .route-result { margin: 0.5rem 0 0 2.5rem; background: #0a0e17; border: 1px solid #1e2a3a; border-radius: 6px; padding: 0.75rem; font-family: monospace; font-size: 0.78rem; color: #a3e635; white-space: pre-wrap; word-break: break-all; display: none; max-height: 200px; overflow-y: auto; }
 
-  /* Preview */
-  .preview-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  /* Buttons */
   .btn { padding: 0.5rem 1.25rem; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
   .btn:hover { opacity: 0.85; }
   .btn-primary { background: #0ea5e9; color: #fff; }
-  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-danger  { background: #ef4444; color: #fff; }
   .btn-success { background: #10b981; color: #fff; }
+
+  /* Preview */
+  .preview-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
   .camera-select { background: #0f1117; border: 1px solid #1e2a3a; color: #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.875rem; }
+  #preview-status { font-size: 0.8rem; color: #64748b; }
   #preview-container { display: none; }
   #preview-container iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 6px; background: #000; }
-  #preview-status { font-size: 0.8rem; color: #64748b; }
 
-  /* Timeline */
+  /* Clip */
   .timeline-controls { display: flex; flex-direction: column; gap: 1rem; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   label { font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 0.35rem; }
@@ -51,7 +57,7 @@
   .timeline-track { height: 10px; background: #1e2a3a; border-radius: 99px; position: relative; overflow: hidden; }
   .timeline-fill { height: 100%; background: #10b981; border-radius: 99px; width: 0%; transition: width 0.3s; }
   .timeline-selection { position: absolute; top: 0; height: 100%; background: #0ea5e9; opacity: 0.6; pointer-events: none; }
-  .download-row { display: flex; gap: 1rem; align-items: center; }
+  .download-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
   #range-info { font-size: 0.8rem; color: #64748b; }
   #download-status { font-size: 0.8rem; margin-top: 0.5rem; }
 </style>
@@ -64,48 +70,79 @@
 
 <div class="container">
 
-  <!-- DOCS -->
+  <!-- DOCS + EXPLORER -->
   <div class="card">
-    <div class="card-header">API Reference</div>
+    <div class="card-header">API Explorer</div>
     <div class="card-body">
+
+      <!-- /healthz -->
       <div class="route">
-        <span class="method get">GET</span>
-        <div class="route-info">
+        <div class="route-top">
+          <span class="method">GET</span>
           <span class="route-path">/healthz</span>
-          <span class="route-desc">Status do serviço</span>
+          <button class="btn-run" onclick="runRoute('healthz', '/healthz')">▶ Testar</button>
         </div>
+        <div class="route-desc">Status do serviço</div>
+        <div class="route-result" id="result-healthz"></div>
       </div>
+
+      <!-- /cameras -->
       <div class="route">
-        <span class="method get">GET</span>
-        <div class="route-info">
+        <div class="route-top">
+          <span class="method">GET</span>
           <span class="route-path">/cameras</span>
-          <span class="route-desc">Lista câmeras com segmentos gravados</span>
+          <button class="btn-run" onclick="runRoute('cameras', '/cameras')">▶ Testar</button>
         </div>
+        <div class="route-desc">Lista câmeras com segmentos gravados</div>
+        <div class="route-result" id="result-cameras"></div>
       </div>
+
+      <!-- /range -->
       <div class="route">
-        <span class="method get">GET</span>
-        <div class="route-info">
+        <div class="route-top">
+          <span class="method">GET</span>
           <span class="route-path">/range</span>
-          <span class="route-desc">Período disponível de gravação para uma câmera</span>
-          <span class="route-params">?camera=0</span>
+          <button class="btn-run" onclick="runRouteFromForm('range')">▶ Testar</button>
         </div>
+        <div class="route-desc">Período disponível de gravação para uma câmera</div>
+        <div class="route-form">
+          <input class="route-input" id="param-range-camera" value="0" placeholder="camera=0">
+        </div>
+        <div class="route-result" id="result-range"></div>
       </div>
+
+      <!-- /segments -->
       <div class="route">
-        <span class="method get">GET</span>
-        <div class="route-info">
+        <div class="route-top">
+          <span class="method">GET</span>
           <span class="route-path">/segments</span>
-          <span class="route-desc">Lista segmentos num intervalo</span>
-          <span class="route-params">?camera=0&amp;start=2026-06-01T00:00:00Z&amp;end=2026-06-01T01:00:00Z</span>
+          <button class="btn-run" onclick="runRouteFromForm('segments')">▶ Testar</button>
         </div>
+        <div class="route-desc">Lista segmentos num intervalo</div>
+        <div class="route-form">
+          <input class="route-input" id="param-segments-camera" value="0" placeholder="camera">
+          <input class="route-input" id="param-segments-start" placeholder="start (ISO8601)" style="width:200px">
+          <input class="route-input" id="param-segments-end" placeholder="end (ISO8601)" style="width:200px">
+        </div>
+        <div class="route-result" id="result-segments"></div>
       </div>
+
+      <!-- /clips -->
       <div class="route">
-        <span class="method get">GET</span>
-        <div class="route-info">
+        <div class="route-top">
+          <span class="method">GET</span>
           <span class="route-path">/clips</span>
-          <span class="route-desc">Baixa MP4 do intervalo (ffmpeg copy)</span>
-          <span class="route-params">?camera=0&amp;start=2026-06-01T00:00:00Z&amp;end=2026-06-01T00:00:30Z</span>
+          <button class="btn-run" onclick="runRouteFromForm('clips')">⬇ Baixar</button>
         </div>
+        <div class="route-desc">Baixa MP4 do intervalo (ffmpeg copy)</div>
+        <div class="route-form">
+          <input class="route-input" id="param-clips-camera" value="0" placeholder="camera">
+          <input class="route-input" id="param-clips-start" placeholder="start (ISO8601)" style="width:200px">
+          <input class="route-input" id="param-clips-end" placeholder="end (ISO8601)" style="width:200px">
+        </div>
+        <div class="route-result" id="result-clips"></div>
       </div>
+
     </div>
   </div>
 
@@ -126,12 +163,12 @@
     </div>
   </div>
 
-  <!-- TIMELINE -->
+  <!-- DOWNLOAD CLIPE -->
   <div class="card">
     <div class="card-header">Baixar Clipe</div>
     <div class="card-body">
       <div class="timeline-controls">
-        <div style="display:flex; gap:1rem; align-items:center;">
+        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
           <select class="camera-select" id="clip-cam" onchange="loadRange()">
             <option value="0">Câmera 0</option>
           </select>
@@ -176,6 +213,7 @@ const CLIP_API = "__CLIP_API_URL__";
 const PREVIEW_BASE = "__PREVIEW_URL__";
 let rangeFirst = null, rangeLast = null;
 
+// ── init ──────────────────────────────────────────────────────────────
 async function init() {
   try {
     const cams = await fetch(CLIP_API + "/cameras").then(r => r.json());
@@ -185,12 +223,75 @@ async function init() {
       const sel = document.getElementById(id);
       sel.innerHTML = cams.map(c => `<option value="${c}">Câmera ${c}</option>`).join("");
     });
+    // pré-preenche camera nos forms de rota
+    const cam = cams[0] || "0";
+    document.getElementById("param-range-camera").value = cam;
+    document.getElementById("param-segments-camera").value = cam;
+    document.getElementById("param-clips-camera").value = cam;
   } catch(e) {
     document.getElementById("cam-badge").textContent = "clip-api offline";
   }
   loadRange();
 }
 
+// ── API explorer ──────────────────────────────────────────────────────
+async function runRoute(id, path) {
+  const el = document.getElementById("result-" + id);
+  el.style.display = "block";
+  el.textContent = "carregando...";
+  try {
+    const r = await fetch(CLIP_API + path);
+    const data = await r.json();
+    el.textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    el.textContent = "Erro: " + e.message;
+  }
+}
+
+async function runRouteFromForm(id) {
+  const el = document.getElementById("result-" + id);
+  el.style.display = "block";
+
+  if (id === "range") {
+    const cam = document.getElementById("param-range-camera").value;
+    return runRoute("range", `/range?camera=${encodeURIComponent(cam)}`);
+  }
+
+  if (id === "segments") {
+    const cam   = document.getElementById("param-segments-camera").value;
+    const start = document.getElementById("param-segments-start").value;
+    const end   = document.getElementById("param-segments-end").value;
+    if (!start || !end) { el.textContent = "Preencha start e end (ex: 2026-06-03T20:00:00Z)"; return; }
+    return runRoute("segments", `/segments?camera=${encodeURIComponent(cam)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+  }
+
+  if (id === "clips") {
+    const cam   = document.getElementById("param-clips-camera").value;
+    const start = document.getElementById("param-clips-start").value;
+    const end   = document.getElementById("param-clips-end").value;
+    if (!start || !end) { el.textContent = "Preencha start e end (ex: 2026-06-03T20:00:00Z)"; return; }
+    el.textContent = "gerando clipe...";
+    try {
+      const url = `${CLIP_API}/clips?camera=${encodeURIComponent(cam)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        el.textContent = "Erro " + resp.status + ": " + (err.detail || resp.statusText);
+        return;
+      }
+      const blob = await resp.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `clip-cam${cam}.mp4`;
+      a.click();
+      el.textContent = "✓ Download iniciado (" + (blob.size / 1024 / 1024).toFixed(1) + " MB)";
+    } catch(e) {
+      el.textContent = "Erro: " + e.message;
+    }
+  }
+}
+
+// ── preview ───────────────────────────────────────────────────────────
 let previewOn = false;
 function togglePreview() {
   const cam = document.getElementById("preview-cam").value;
@@ -212,6 +313,7 @@ function togglePreview() {
   }
 }
 
+// ── timeline ──────────────────────────────────────────────────────────
 async function loadRange() {
   const cam = document.getElementById("clip-cam").value;
   const info = document.getElementById("range-info");
@@ -229,18 +331,28 @@ async function loadRange() {
     }
     rangeFirst = new Date(data.first);
     rangeLast  = new Date(data.last);
-    const durH = ((rangeLast - rangeFirst) / 3600000).toFixed(1);
-    info.textContent = `${durH}h disponíveis`;
+    const durMin = ((rangeLast - rangeFirst) / 60000).toFixed(0);
+    const durH   = ((rangeLast - rangeFirst) / 3600000).toFixed(1);
+    info.textContent = durMin < 90 ? `${durMin} min disponíveis` : `${durH}h disponíveis`;
     document.getElementById("range-first").textContent = fmtLocal(rangeFirst);
     document.getElementById("range-last").textContent  = fmtLocal(rangeLast);
     fill.style.width = "100%";
-    const end = new Date(rangeLast);
-    const start = new Date(Math.max(rangeFirst, end - 30000));
+
+    // pré-preenche pickers: últimos 30s
+    const end   = new Date(rangeLast);
+    const start = new Date(Math.max(rangeFirst.getTime(), end.getTime() - 30000));
     document.getElementById("clip-start").value = toInputVal(start);
     document.getElementById("clip-end").value   = toInputVal(end);
+
+    // sincroniza também os campos do API explorer
+    document.getElementById("param-segments-start").value = rangeFirst.toISOString().replace(".000Z", "Z");
+    document.getElementById("param-segments-end").value   = rangeLast.toISOString().replace(".000Z", "Z");
+    document.getElementById("param-clips-start").value    = start.toISOString().replace(".000Z", "Z");
+    document.getElementById("param-clips-end").value      = end.toISOString().replace(".000Z", "Z");
+
     updateSelBar();
   } catch(e) {
-    info.textContent = "Erro ao carregar range";
+    info.textContent = "Erro ao carregar range: " + e.message;
   }
 }
 
@@ -249,6 +361,7 @@ function updateSelBar() {
   const s = new Date(document.getElementById("clip-start").value);
   const e = new Date(document.getElementById("clip-end").value);
   const total = rangeLast - rangeFirst;
+  if (total <= 0) return;
   const left  = Math.max(0, Math.min(100, (s - rangeFirst) / total * 100));
   const right = Math.max(0, Math.min(100, (e - rangeFirst) / total * 100));
   const sel = document.getElementById("timeline-sel");
@@ -264,7 +377,7 @@ async function downloadClip() {
   if (!start || !end) { status.textContent = "Preencha início e fim."; return; }
   const s = new Date(start).toISOString();
   const e = new Date(end).toISOString();
-  const url = `${CLIP_API}/clips?camera=${cam}&start=${s}&end=${e}`;
+  const url = `${CLIP_API}/clips?camera=${cam}&start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`;
   status.innerHTML = `<span style="color:#0ea5e9">⏳ Gerando clipe...</span>`;
   try {
     const resp = await fetch(url);
@@ -278,12 +391,13 @@ async function downloadClip() {
     a.href = URL.createObjectURL(blob);
     a.download = `clip-cam${cam}-${start.replace(/[: ]/g,"-")}.mp4`;
     a.click();
-    status.innerHTML = `<span style="color:#10b981">✓ Download iniciado</span>`;
+    status.innerHTML = `<span style="color:#10b981">✓ Download iniciado (${(blob.size/1024/1024).toFixed(1)} MB)</span>`;
   } catch(e) {
-    status.innerHTML = `<span style="color:#ef4444">Erro de rede</span>`;
+    status.innerHTML = `<span style="color:#ef4444">Erro de rede: ${e.message}</span>`;
   }
 }
 
+// ── helpers ───────────────────────────────────────────────────────────
 function fmtLocal(d) {
   return d.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
 }

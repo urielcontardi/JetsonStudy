@@ -18,7 +18,7 @@ services:
       dockerfile: services/dashboard/Dockerfile
     restart: unless-stopped
     environment:
-      CLIP_API_URL: http://clip-api:8080
+      CLIP_API_URL: http://10.8.64.33:8080
       PREVIEW_URL: http://10.8.64.33:8888
     ports:
       - "3000:3000"
