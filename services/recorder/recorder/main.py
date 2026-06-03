@@ -64,6 +64,22 @@ def _indexer_loop(index: SegmentIndex, config, stop: threading.Event) -> None:
         stop.wait(INDEXER_PERIOD_S)
 
 
+def _probe_camera(Gst, sensor_id: int) -> bool:
+    """Verifica se o sensor_id existe no Argus. Retorna True se disponível."""
+    try:
+        pipe = Gst.parse_launch(
+            f"nvarguscamerasrc sensor-id={sensor_id} num-buffers=1 ! "
+            "video/x-raw(memory:NVMM),width=640,height=480,framerate=30/1 ! fakesink"
+        )
+        pipe.set_state(Gst.State.PLAYING)
+        bus = pipe.get_bus()
+        msg = bus.timed_pop_filtered(3_000_000_000, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+        pipe.set_state(Gst.State.NULL)
+        return msg is not None and msg.type == Gst.MessageType.EOS
+    except Exception:
+        return False
+
+
 def main() -> None:
     import gi  # import tardio (só existe no Jetson)
 
@@ -76,9 +92,18 @@ def main() -> None:
     index = SegmentIndex(os.environ.get(
         "ORWELL_INDEX_DB", f"{config.retention.data_dir}/index.sqlite"))
 
+    available = [cam for cam in config.cameras if _probe_camera(Gst, cam.argus_sensor_id)]
+    skipped = [cam for cam in config.cameras if cam not in available]
+    for cam in skipped:
+        print(f"recorder: sensor-id={cam.argus_sensor_id} não disponível, ignorando", flush=True)
+
+    if not available:
+        print("recorder: nenhuma câmera disponível, saindo", flush=True)
+        return
+
     pipelines = [_build_camera_bin(Gst, cam, config.capture, config.preview,
                                    config.retention.data_dir)
-                 for cam in config.cameras]
+                 for cam in available]
     for p in pipelines:
         p.set_state(Gst.State.PLAYING)
     print(f"recorder: {len(pipelines)} câmera(s) gravando em {config.retention.data_dir}",
