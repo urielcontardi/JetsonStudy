@@ -35,6 +35,27 @@ def create_app(extract_fn=extract_clip) -> FastAPI:
         segs = index.query(camera, _to_epoch(start), _to_epoch(end))
         return [s.path for s in segs]
 
+    @app.get("/range")
+    def range_endpoint(camera: str = Query(...)):
+        from datetime import datetime, timezone
+        oldest = index.oldest(camera)
+        newest_row = index._conn.execute(
+            "SELECT * FROM segments WHERE camera_id=? ORDER BY t_end DESC LIMIT 1",
+            (camera,)
+        ).fetchone()
+        newest = index._row(newest_row) if newest_row else None
+
+        def fmt(ts: float | None) -> str | None:
+            if ts is None:
+                return None
+            return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        return {
+            "camera": camera,
+            "first": fmt(oldest.t_start) if oldest else None,
+            "last":  fmt(newest.t_end)   if newest else None,
+        }
+
     @app.get("/clips")
     def clips(camera: str = Query(...), start: str = Query(...), end: str = Query(...)):
         s, e = _to_epoch(start), _to_epoch(end)

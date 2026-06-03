@@ -18,7 +18,10 @@ def _build_client(tmp_path, monkeypatch):
     from clip_api.main import create_app
 
     # injeta um extrator fake p/ não depender de ffmpeg neste teste
-    def fake_extract(index, camera, start, end, out_path, init_path, runner=None):
+    from orwell_shared.clips import NoSegments
+    def fake_extract(index, camera, start, end, out_path, init_path=None, runner=None):
+        if not index.query(camera, start, end):
+            raise NoSegments(f"camera={camera}")
         Path(out_path).write_bytes(b"CLIP"); return Path(out_path)
 
     app = create_app(extract_fn=fake_extract)
@@ -51,3 +54,20 @@ def test_get_clip_404_when_empty(tmp_path, monkeypatch):
                                 "start": "2000-01-01T00:00:00Z",
                                 "end": "2000-01-01T00:00:05Z"})
     assert r.status_code == 404
+
+
+def test_range_empty(tmp_path, monkeypatch):
+    c = _build_client(tmp_path, monkeypatch)
+    r = c.get("/range?camera=99")
+    assert r.status_code == 200
+    assert r.json() == {"camera": "99", "first": None, "last": None}
+
+
+def test_range_with_segments(tmp_path, monkeypatch):
+    c = _build_client(tmp_path, monkeypatch)
+    r = c.get("/range?camera=0")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["camera"] == "0"
+    assert data["first"] == "1970-01-01T00:01:40Z"  # t_start=100.0
+    assert data["last"]  == "1970-01-01T00:01:48Z"  # t_end=108.0
