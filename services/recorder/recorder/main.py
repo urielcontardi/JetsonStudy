@@ -64,31 +64,16 @@ def _indexer_loop(index: SegmentIndex, config, stop: threading.Event) -> None:
         stop.wait(INDEXER_PERIOD_S)
 
 
-def _probe_camera(Gst, sensor_id: int) -> bool:
-    """Verifica se o sensor_id existe no Argus. Retorna True se disponível."""
-    try:
-        pipe = Gst.parse_launch(
-            f"nvarguscamerasrc sensor-id={sensor_id} num-buffers=1 ! "
-            "video/x-raw(memory:NVMM) ! fakesink sync=false"
-        )
-        pipe.set_state(Gst.State.PLAYING)
-        bus = pipe.get_bus()
-        found = False
-        deadline = 4_000_000_000  # 4s total
-        while True:
-            msg = bus.timed_pop_filtered(deadline, Gst.MessageType.EOS | Gst.MessageType.ERROR)
-            if msg is None:
-                break
-            if msg.type == Gst.MessageType.ERROR:
-                found = False
-                break
-            if msg.type == Gst.MessageType.EOS:
-                found = True
-                break
-        pipe.set_state(Gst.State.NULL)
-        return found
-    except Exception:
-        return False
+def _available_sensor_ids() -> set[int]:
+    """Retorna os sensor-ids disponíveis lendo /dev/video* no host (via /proc ou sysfs).
+
+    O Argus enumera as câmeras como /dev/video0, /dev/video1, etc. O número de
+    dispositivos video4linux disponíveis é o número de sensores presentes.
+    Não abre o sensor — evita conflito com a CaptureSession do Argus.
+    """
+    import glob
+    devices = glob.glob("/dev/video*")
+    return set(range(len(devices)))
 
 
 def main() -> None:
@@ -103,7 +88,8 @@ def main() -> None:
     index = SegmentIndex(os.environ.get(
         "ORWELL_INDEX_DB", f"{config.retention.data_dir}/index.sqlite"))
 
-    available = [cam for cam in config.cameras if _probe_camera(Gst, cam.argus_sensor_id)]
+    sensor_ids = _available_sensor_ids()
+    available = [cam for cam in config.cameras if cam.argus_sensor_id in sensor_ids]
     skipped = [cam for cam in config.cameras if cam not in available]
     for cam in skipped:
         print(f"recorder: sensor-id={cam.argus_sensor_id} não disponível, ignorando", flush=True)
