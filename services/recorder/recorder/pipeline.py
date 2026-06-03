@@ -50,8 +50,7 @@ def build_source_chain(camera: CameraConfig, profile: CaptureProfile) -> str:
     """
     return (
         f"nvarguscamerasrc sensor-id={camera.argus_sensor_id} ! "
-        f"video/x-raw(memory:NVMM),width={profile.width},height={profile.height},"
-        f"framerate={profile.fps}/1 ! "
+        f"video/x-raw(memory:NVMM),width={profile.width},height={profile.height} ! "
         f"{encoder_chain(profile)} ! "
         f"{parser_element(profile)}"
     )
