@@ -22,4 +22,4 @@ preview:
   rtsp_base_url: rtsp://preview:8554
 retention:
   data_dir: /var/lib/orwell/data
-  disk_high_watermark_pct: 85
+  disk_high_watermark_pct: 50
