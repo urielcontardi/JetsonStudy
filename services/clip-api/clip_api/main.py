@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from orwell_shared.clips import NoSegments, extract_clip
@@ -19,6 +20,7 @@ def _to_epoch(value: str) -> float:
 
 def create_app(extract_fn=extract_clip) -> FastAPI:
     app = FastAPI(title="Orwell Clip API")
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     index = SegmentIndex(index_db_path())
     ddir = data_dir()
 
