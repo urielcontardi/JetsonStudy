@@ -17,8 +17,7 @@ WORKDIR /app
 # --no-deps evita reinstalar libs já presentes na base; pydantic/pyyaml entram explicitamente.
 COPY shared/ /src/shared/
 COPY pyproject.toml /src/
-RUN pip3 install --no-cache-dir "pydantic>=2.6" "pyyaml>=6.0" \
-    && pip3 install --no-cache-dir --no-deps /src
+RUN pip3 install --no-cache-dir /src
 
 COPY services/recorder/recorder /app/recorder
 COPY config /app/config
