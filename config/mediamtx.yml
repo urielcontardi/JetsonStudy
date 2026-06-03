@@ -1,8 +1,17 @@
 # MediaMTX — preview ao vivo (RTSP/WebRTC) p/ dev. Recebe push do recorder e
-# reexpõe via RTSP (8554) e WebRTC (8889). Não faz parte do caminho de produção.
+# reexpõe via RTSP (8554), HLS (8888) e WebRTC (8889). Não faz parte do caminho de produção.
 rtsp: yes
 rtspAddress: :8554
+
+hls: yes
+hlsAddress: :8888
+
 webrtc: yes
 webrtcAddress: :8889
+# Anuncia o IP da Jetson para o ICE — necessário quando o container está atrás de NAT/bridge
+webrtcICEHostAddresses: ["10.8.64.33"]
+# Fallback TCP para ICE quando UDP bloqueado
+webrtcICETCPAddress: :8189
+
 paths:
   all_others:
