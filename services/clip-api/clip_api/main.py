@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse
 
 from orwell_shared.clips import NoSegments, extract_clip
 from orwell_shared.index import SegmentIndex
-from orwell_shared.paths import init_path
 
 from .settings import data_dir, index_db_path
 
@@ -41,7 +40,7 @@ def create_app(extract_fn=extract_clip) -> FastAPI:
         s, e = _to_epoch(start), _to_epoch(end)
         out = Path(tempfile.gettempdir()) / f"clip-{camera}-{int(s)}-{int(e)}.mp4"
         try:
-            extract_fn(index, camera, s, e, out, init_path=init_path(ddir, camera))
+            extract_fn(index, camera, s, e, out)
         except NoSegments:
             raise HTTPException(status_code=404, detail="no segments for window")
         return FileResponse(str(out), media_type="video/mp4", filename=out.name)
