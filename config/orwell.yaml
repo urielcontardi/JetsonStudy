@@ -9,7 +9,7 @@ cameras:
 capture:
   width: 1920
   height: 1080
-  fps: 30
+  fps: 60
   codec: h265            # h264 | h265
   encoder: hw            # hw (NVENC, Orin NX) | sw (x264enc, fallback Nano)
   gop_seconds: 1.0
