@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Orwell — Storage Calculator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 32px 16px; }
+  h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: #8b949e; font-size: 0.85rem; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 0 auto; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; }
+  .card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8b949e; margin-bottom: 16px; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .row span { font-size: 0.82rem; color: #c9d1d9; }
+  .val { font-weight: 600; color: #58a6ff; min-width: 64px; text-align: right; }
+  input[type=range] { width: 100%; accent-color: #58a6ff; margin: 4px 0 8px; }
+  .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px; font-size: 0.82rem; color: #c9d1d9; }
+  .toggle input { accent-color: #3fb950; width: 16px; height: 16px; }
+  .results { max-width: 900px; margin: 24px auto 0; }
+  .result-card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; }
+  .result-card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8b949e; margin-bottom: 16px; }
+  .big { font-size: 2.8rem; font-weight: 700; color: #3fb950; }
+  .big-unit { font-size: 1rem; color: #8b949e; margin-left: 4px; }
+  .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 0.85rem; }
+  .stat-row:last-child { border: none; }
+  .stat-label { color: #8b949e; }
+  .stat-val { color: #e6edf3; font-weight: 500; }
+  .warn { font-size: 0.78rem; margin-top: 6px; }
+  .good { color: #3fb950; }
+  .med  { color: #d29922; }
+  .bad  { color: #f85149; }
+  hr { border: none; border-top: 1px solid #21262d; margin: 20px 0; }
+  .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8b949e; margin-bottom: 8px; }
+  .sub { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div style="max-width:900px;margin:0 auto">
+  <h1>Orwell Storage Calculator</h1>
+  <p class="subtitle">Calcule o tempo de retenção para diferentes configurações de DVR + IA.</p>
+</div>
+
+<div class="grid">
+  <!-- Hardware -->
+  <div class="card">
+    <h2>Hardware</h2>
+    <div class="row"><span>NVMe (GB)</span><span class="val" id="v-nvme">256</span></div>
+    <input type="range" id="nvme" min="64" max="2048" step="64" value="256">
+    <div class="row"><span>Câmeras</span><span class="val" id="v-cams">2</span></div>
+    <input type="range" id="cams" min="1" max="8" step="1" value="2">
+    <div class="row"><span>Watermark disco (%)</span><span class="val" id="v-wm">85</span></div>
+    <input type="range" id="wm" min="50" max="95" step="5" value="85">
+  </div>
+
+  <!-- DVR Stream -->
+  <div class="card">
+    <h2>DVR — Branch A</h2>
+    <div class="row"><span>Bitrate por câmera (Mbps)</span><span class="val" id="v-dvr-br">0.5</span></div>
+    <input type="range" id="dvr-br" min="0.25" max="8" step="0.25" value="0.5">
+    <div class="row"><span>FPS</span><span class="val" id="v-dvr-fps">25</span></div>
+    <input type="range" id="dvr-fps" min="5" max="60" step="5" value="25">
+    <p class="warn" id="dvr-quality-note"></p>
+  </div>
+
+  <!-- Event Buffer -->
+  <div class="card">
+    <h2>Event Buffer — Branch C</h2>
+    <label class="toggle">
+      <input type="checkbox" id="buf-enabled" checked>
+      Habilitado
+    </label>
+    <div class="row"><span>Buffer (segundos)</span><span class="val" id="v-buf-s">60</span></div>
+    <input type="range" id="buf-s" min="10" max="300" step="10" value="60">
+    <div class="row"><span>Bitrate por câmera (Mbps)</span><span class="val" id="v-buf-br">8</span></div>
+    <input type="range" id="buf-br" min="2" max="20" step="1" value="8">
+    <div class="row"><span>Eventos/dia estimados</span><span class="val" id="v-evts">5</span></div>
+    <input type="range" id="evts" min="0" max="200" step="1" value="5">
+  </div>
+
+  <!-- AI Stream -->
+  <div class="card">
+    <h2>IA — Branch B</h2>
+    <label class="toggle">
+      <input type="checkbox" id="ai-enabled">
+      Habilitado
+    </label>
+    <div class="row"><span>Resolução inferência</span>
+      <select id="ai-res" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:3px 6px;font-size:0.82rem">
+        <option value="416x416">416×416</option>
+        <option value="640x360" selected>640×360</option>
+        <option value="640x640">640×640</option>
+        <option value="1280x720">1280×720</option>
+      </select>
+    </div>
+    <div class="row"><span>FPS inferência</span><span class="val" id="v-ai-fps">8</span></div>
+    <input type="range" id="ai-fps" min="1" max="30" step="1" value="8">
+    <p class="sub" style="margin-top:8px">Branch B não grava em disco — sem custo de storage. Usa GPU/DLA independente do NVENC.</p>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="results">
+  <div class="result-card">
+    <h2>Resultado</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+      <div>
+        <div class="section-title">Retenção DVR</div>
+        <div><span class="big" id="r-days">--</span><span class="big-unit" id="r-days-unit">dias</span></div>
+        <div class="sub" id="r-hours-also"></div>
+      </div>
+      <div>
+        <div class="section-title">Consumo disco</div>
+        <div><span class="big" id="r-gbh" style="font-size:1.8rem">--</span><span class="big-unit">GB/h</span></div>
+        <div class="sub" id="r-mbps-total"></div>
+      </div>
+      <div>
+        <div class="section-title">RAM (event buffer)</div>
+        <div><span class="big" id="r-ram" style="font-size:1.8rem">--</span><span class="big-unit" id="r-ram-unit">MB</span></div>
+        <div class="sub" id="r-ram-note"></div>
+      </div>
+    </div>
+
+    <hr>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="section-title">Breakdown de storage</div>
+        <div class="stat-row"><span class="stat-label">NVMe utilizável</span><span class="stat-val" id="r-usable">--</span></div>
+        <div class="stat-row"><span class="stat-label">DVR (GB/h)</span><span class="stat-val" id="r-dvr-rate">--</span></div>
+        <div class="stat-row"><span class="stat-label">Event clips (GB/dia)</span><span class="stat-val" id="r-evts-rate">--</span></div>
+        <div class="stat-row"><span class="stat-label">Storage efetivo DVR</span><span class="stat-val" id="r-dvr-effective">--</span></div>
+      </div>
+      <div>
+        <div class="section-title">Comparação</div>
+        <div class="stat-row"><span class="stat-label">Config original (8 Mbps, 60fps, 50%)</span><span class="stat-val bad">~18h</span></div>
+        <div class="stat-row"><span class="stat-label">Padrão comercial (4 Mbps, 25fps, 85%)</span><span class="stat-val med">~2,5 dias</span></div>
+        <div class="stat-row"><span class="stat-label">Esta config</span><span class="stat-val" id="r-compare">--</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function v(id) { return document.getElementById(id); }
+
+function fmt(hours) {
+  if (hours < 2)   return { val: Math.round(hours * 60), unit: "min" };
+  if (hours < 48)  return { val: hours.toFixed(1),       unit: "horas" };
+  return               { val: (hours / 24).toFixed(1),  unit: "dias" };
+}
+
+function qualityNote(brMbps, fps) {
+  const score = brMbps * (fps / 25);
+  if (score < 0.3) return { cls: "bad",  msg: "⚠️ Muito baixo — difícil identificar eventos no DVR" };
+  if (score < 1.0) return { cls: "med",  msg: "⚡ Baixo — suficiente para confirmar que algo ocorreu" };
+  if (score < 4.0) return { cls: "good", msg: "✅ Padrão comercial — revisão adequada" };
+  return               { cls: "good", msg: "✅ Alta qualidade" };
+}
+
+function calc() {
+  const nvme    = +v("nvme").value;
+  const cams    = +v("cams").value;
+  const wm      = +v("wm").value / 100;
+  const dvrBr   = +v("dvr-br").value;
+  const dvrFps  = +v("dvr-fps").value;
+  const bufOn   = v("buf-enabled").checked;
+  const bufS    = +v("buf-s").value;
+  const bufBr   = +v("buf-br").value;
+  const evtsDay = +v("evts").value;
+
+  const usableGB = nvme * wm;
+  const dvrTotalMbps = dvrBr * cams;
+  const dvrGBH = dvrTotalMbps * 3600 / 8 / 1024;
+
+  const clipSizeMB = bufOn ? (bufBr * cams * bufS / 8) : 0;
+  const evtGBDay   = (clipSizeMB * evtsDay) / 1024;
+  // reserva para 30 dias de eventos (ou menos se não couber)
+  const evtReserveGB = Math.min(evtGBDay * 30, usableGB * 0.2);
+  const dvrEffectiveGB = Math.max(0, usableGB - evtReserveGB);
+  const retHours = dvrEffectiveGB / dvrGBH;
+
+  const ramMB = bufOn ? (bufBr * cams * bufS / 8) : 0;
+
+  // render
+  const r = fmt(retHours);
+  v("r-days").textContent = r.val;
+  v("r-days-unit").textContent = r.unit;
+  v("r-hours-also").textContent = r.unit === "dias" ? `≈ ${Math.round(retHours)}h` : "";
+
+  v("r-gbh").textContent = dvrGBH.toFixed(2);
+  v("r-mbps-total").textContent = `${dvrTotalMbps.toFixed(2)} Mbps total`;
+
+  if (ramMB >= 1024) {
+    v("r-ram").textContent = (ramMB / 1024).toFixed(1);
+    v("r-ram-unit").textContent = "GB";
+  } else {
+    v("r-ram").textContent = Math.round(ramMB) || "0";
+    v("r-ram-unit").textContent = "MB";
+  }
+  v("r-ram-note").textContent = bufOn ? `${bufS}s × ${cams} câm × ${bufBr} Mbps` : "desabilitado";
+
+  v("r-usable").textContent      = `${usableGB.toFixed(0)} GB (${Math.round(wm*100)}% de ${nvme} GB)`;
+  v("r-dvr-rate").textContent    = `${dvrGBH.toFixed(2)} GB/h`;
+  v("r-evts-rate").textContent   = bufOn
+    ? `${evtGBDay.toFixed(2)} GB/dia (${evtsDay} × ${clipSizeMB.toFixed(0)} MB)`
+    : "0 (buffer desabilitado)";
+  v("r-dvr-effective").textContent = `${dvrEffectiveGB.toFixed(0)} GB`;
+
+  const retDays = retHours / 24;
+  const cmp = v("r-compare");
+  cmp.textContent = r.unit === "dias" ? `~${r.val} dias` : `~${r.val} ${r.unit}`;
+  cmp.className = "stat-val " + (retDays > 7 ? "good" : retDays > 2 ? "med" : "bad");
+
+  const q = qualityNote(dvrBr, dvrFps);
+  const note = v("dvr-quality-note");
+  note.textContent = q.msg;
+  note.className = "warn " + q.cls;
+
+  // sync display values
+  v("v-nvme").textContent    = nvme;
+  v("v-cams").textContent    = cams;
+  v("v-wm").textContent      = Math.round(wm * 100);
+  v("v-dvr-br").textContent  = dvrBr;
+  v("v-dvr-fps").textContent = dvrFps;
+  v("v-buf-s").textContent   = bufS;
+  v("v-buf-br").textContent  = bufBr;
+  v("v-evts").textContent    = evtsDay;
+  v("v-ai-fps").textContent  = v("ai-fps").value;
+}
+
+["nvme","cams","wm","dvr-br","dvr-fps","buf-s","buf-br","evts","ai-fps"]
+  .forEach(id => v(id).addEventListener("input", calc));
+["buf-enabled","ai-enabled"]
+  .forEach(id => v(id).addEventListener("change", calc));
+
+calc();
+</script>
+</body>
+</html>
