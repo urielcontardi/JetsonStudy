@@ -60,6 +60,15 @@ class PreviewConfig(BaseModel):
     rtsp_base_url: str = "rtsp://preview:8554"
 
 
+class ConveyorConfig(BaseModel):
+    enabled: bool = False
+    host: str = "conveyor.tractian.com"
+    port: int = 8080
+    ext_id: str = ""
+    upload_interval_s: int = 30
+    status_interval_s: int = 300
+
+
 class OrwellConfig(BaseModel):
     device_name: str = "orwell-dev"
     cameras: list[CameraConfig] = Field(default_factory=list)
@@ -68,6 +77,7 @@ class OrwellConfig(BaseModel):
     ai: AIConfig = Field(default_factory=AIConfig)
     event_buffer: EventBufferConfig = Field(default_factory=EventBufferConfig)
     preview: PreviewConfig = Field(default_factory=PreviewConfig)
+    conveyor: ConveyorConfig = Field(default_factory=ConveyorConfig)
 
 
 def _apply_env_overrides(data: dict) -> dict:
