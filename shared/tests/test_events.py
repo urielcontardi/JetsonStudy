@@ -60,3 +60,45 @@ def test_clip_path_and_uploaded_at(idx):
     result = idx.get("evt-1")
     assert result.clip_path == "/events/evt-1"
     assert result.uploaded_at is None
+
+
+# --- pending_uploads / mark_uploaded / mark_upload_failed ---
+
+import time as _time
+
+
+def test_pending_uploads_returns_events_with_null_uploaded_at(idx):
+    idx.add_event(_event(id="u1", clip_path="/events/u1"))
+    pending = idx.pending_uploads()
+    assert len(pending) == 1
+    assert pending[0].id == "u1"
+
+
+def test_pending_uploads_excludes_already_uploaded(idx):
+    idx.add_event(_event(id="u2", clip_path="/events/u2"))
+    idx.mark_uploaded("u2")
+    assert idx.pending_uploads() == []
+
+
+def test_pending_uploads_excludes_permanent_failures(idx):
+    idx.add_event(_event(id="u3", clip_path="/events/u3"))
+    idx.mark_upload_failed("u3")
+    assert idx.pending_uploads() == []
+
+
+def test_mark_uploaded_sets_timestamp(idx):
+    idx.add_event(_event(id="u4", clip_path="/events/u4"))
+    before = _time.time()
+    idx.mark_uploaded("u4")
+    after = _time.time()
+    result = idx.get("u4")
+    assert result.uploaded_at is not None
+    assert before <= result.uploaded_at <= after
+
+
+def test_pending_uploads_multiple_events(idx):
+    for i in ("p1", "p2", "p3"):
+        idx.add_event(_event(id=i, clip_path=f"/events/{i}"))
+    idx.mark_uploaded("p2")
+    ids = {e.id for e in idx.pending_uploads()}
+    assert ids == {"p1", "p3"}

@@ -69,6 +69,27 @@ class EventIndex:
         ).fetchone()
         return self._row(row) if row else None
 
+    def pending_uploads(self) -> list[Event]:
+        rows = self._conn.execute(
+            "SELECT * FROM events WHERE uploaded_at IS NULL ORDER BY t_evento"
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+    def mark_uploaded(self, event_id: str) -> None:
+        import time as _time
+        self._conn.execute(
+            "UPDATE events SET uploaded_at=? WHERE id=?",
+            (_time.time(), event_id),
+        )
+        self._conn.commit()
+
+    def mark_upload_failed(self, event_id: str) -> None:
+        self._conn.execute(
+            "UPDATE events SET uploaded_at=? WHERE id=?",
+            (-1.0, event_id),
+        )
+        self._conn.commit()
+
     @staticmethod
     def _row(r: sqlite3.Row) -> Event:
         return Event(
