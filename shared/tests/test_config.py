@@ -68,3 +68,34 @@ def test_ai_and_preview_default_disabled():
     cfg = OrwellConfig()
     assert cfg.ai.enabled is False
     assert cfg.preview.enabled is False
+
+
+def test_event_buffer_config_defaults():
+    from orwell_shared.config import EventBufferConfig
+    c = EventBufferConfig()
+    assert c.enabled is True
+    assert c.buffer_seconds == 60
+    assert c.bitrate_kbps == 8000
+    assert c.tmpfs_dir == "/dev/shm/orwell"
+
+
+def test_retention_config_has_events_dir():
+    from orwell_shared.config import RetentionConfig
+    c = RetentionConfig()
+    assert c.events_dir == "/var/lib/orwell/events"
+
+
+def test_ai_config_new_fields():
+    from orwell_shared.config import AIConfig
+    c = AIConfig()
+    assert c.inference_fps == 8
+    assert c.confidence_threshold == 0.6
+    assert c.input_width == 640
+    assert c.input_height == 360
+    assert c.model_path == "/models/detector.engine"
+
+
+def test_orwell_config_has_event_buffer():
+    cfg = OrwellConfig()
+    assert hasattr(cfg, "event_buffer")
+    assert cfg.event_buffer.buffer_seconds == 60

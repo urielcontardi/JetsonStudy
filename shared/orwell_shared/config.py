@@ -17,8 +17,8 @@ class CaptureProfile(BaseModel):
     width: int = 1920
     height: int = 1080
     fps: int = 30
-    codec: str = "h265"          # h264 | h265
-    encoder: str = "hw"          # hw (NVENC, Orin NX) | sw (x264enc, fallback Nano)
+    codec: str = "h265"
+    encoder: str = "hw"
     gop_seconds: float = 1.0
     segment_seconds: float = 4.0
     bitrate_kbps: int = 8000
@@ -35,17 +35,28 @@ class CaptureProfile(BaseModel):
 
 class RetentionConfig(BaseModel):
     data_dir: str = "/var/lib/orwell/data"
+    events_dir: str = "/var/lib/orwell/events"
     disk_high_watermark_pct: int = 85
 
 
 class AIConfig(BaseModel):
-    enabled: bool = False        # Fase 1 = false; Fase 2 liga nvinfer/nvtracker
-    nvinfer_config: str | None = None
-    tracker_config: str | None = None
+    enabled: bool = False
+    inference_fps: int = 8
+    confidence_threshold: float = 0.6
+    input_width: int = 640
+    input_height: int = 360
+    model_path: str = "/models/detector.engine"
+
+
+class EventBufferConfig(BaseModel):
+    enabled: bool = True
+    buffer_seconds: int = 60
+    bitrate_kbps: int = 8000
+    tmpfs_dir: str = "/dev/shm/orwell"
 
 
 class PreviewConfig(BaseModel):
-    enabled: bool = False        # branch RTSP/WebRTC p/ MediaMTX (ferramenta de dev)
+    enabled: bool = False
     rtsp_base_url: str = "rtsp://preview:8554"
 
 
@@ -55,6 +66,7 @@ class OrwellConfig(BaseModel):
     capture: CaptureProfile = Field(default_factory=CaptureProfile)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
+    event_buffer: EventBufferConfig = Field(default_factory=EventBufferConfig)
     preview: PreviewConfig = Field(default_factory=PreviewConfig)
 
 
