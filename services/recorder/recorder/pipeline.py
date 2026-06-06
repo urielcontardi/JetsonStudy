@@ -88,3 +88,55 @@ def preview_branch(preview: PreviewConfig, camera_id: str) -> str:
 def max_size_time_ns(profile: CaptureProfile) -> int:
     """Duração-alvo do segmento em nanossegundos (para splitmuxsink.max-size-time)."""
     return int(profile.segment_seconds * 1_000_000_000)
+
+
+def build_raw_source(camera: CameraConfig, profile: CaptureProfile) -> str:
+    """Cadeia de captura bruta (pré-tee). Emite frames NVMM sem encode."""
+    return (
+        f"nvarguscamerasrc sensor-id={camera.argus_sensor_id} sensor-mode=2 ! "
+        f"video/x-raw(memory:NVMM),width={profile.width},height={profile.height},"
+        f"framerate={profile.fps}/1"
+    )
+
+
+def dvr_encoder_chain(profile: CaptureProfile) -> str:
+    """Branch A: nvvideoconvert + encoder + parser para o NVMe (bitrate de arquivo)."""
+    kf = keyframe_interval(profile)
+    if profile.encoder == "hw":
+        elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
+        return (
+            f"nvvideoconvert ! "
+            f"{elem} bitrate={profile.bitrate_kbps * 1000} iframeinterval={kf} ! "
+            f"{parser_element(profile)}"
+        )
+    return (
+        "nvvideoconvert ! video/x-raw,format=I420 ! "
+        f"x264enc speed-preset=superfast tune=zerolatency "
+        f"bitrate={profile.bitrate_kbps} key-int-max={kf} ! h264parse"
+    )
+
+
+def event_buffer_encoder_chain(profile: CaptureProfile, buf_bitrate_kbps: int) -> str:
+    """Branch C: nvvideoconvert + encoder de alta qualidade para o tmpfs."""
+    kf = keyframe_interval(profile)
+    if profile.encoder == "hw":
+        elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
+        return (
+            f"nvvideoconvert ! "
+            f"{elem} bitrate={buf_bitrate_kbps * 1000} iframeinterval={kf} ! "
+            f"{parser_element(profile)}"
+        )
+    return (
+        "nvvideoconvert ! video/x-raw,format=I420 ! "
+        f"x264enc speed-preset=superfast tune=zerolatency "
+        f"bitrate={buf_bitrate_kbps} key-int-max={kf} ! h264parse"
+    )
+
+
+def ai_scale_chain(input_width: int, input_height: int, inference_fps: int) -> str:
+    """Branch B: nvvideoconvert scale + videorate para inferência TensorRT."""
+    return (
+        f"nvvideoconvert ! "
+        f"video/x-raw(memory:NVMM),width={input_width},height={input_height} ! "
+        f"videorate ! video/x-raw,framerate={inference_fps}/1"
+    )

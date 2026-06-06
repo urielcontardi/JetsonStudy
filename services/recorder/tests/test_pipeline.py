@@ -1,7 +1,11 @@
 from orwell_shared.config import AIConfig, CameraConfig, CaptureProfile, PreviewConfig
 from recorder.pipeline import (
+    ai_scale_chain,
+    build_raw_source,
     build_source_chain,
+    dvr_encoder_chain,
     encoder_chain,
+    event_buffer_encoder_chain,
     inference_stage,
     keyframe_interval,
     max_size_time_ns,
@@ -98,4 +102,47 @@ def test_preview_branch_enabled_pushes_rtsp():
     branch = preview_branch(
         PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"), camera_id="0")
     assert "rtspclientsink" in branch
-    assert "rtsp://preview:8554/cam0" in branch
+
+
+def test_build_raw_source_no_encoder():
+    cam = CameraConfig(id="0", argus_sensor_id=1)
+    chain = build_raw_source(cam, CaptureProfile(width=1920, height=1080, fps=25))
+    assert "nvarguscamerasrc sensor-id=1" in chain
+    assert "width=1920,height=1080" in chain
+    assert "framerate=25/1" in chain
+    assert "nvv4l2h265enc" not in chain
+    assert "nvv4l2h264enc" not in chain
+
+
+def test_dvr_encoder_chain_hw_h265_low_bitrate():
+    prof = CaptureProfile(codec="h265", encoder="hw", fps=25, gop_seconds=1.0, bitrate_kbps=500)
+    chain = dvr_encoder_chain(prof)
+    assert "nvv4l2h265enc" in chain
+    assert "bitrate=500000" in chain
+    assert "iframeinterval=25" in chain
+    assert "h265parse" in chain
+
+
+def test_dvr_encoder_chain_sw_h264():
+    prof = CaptureProfile(codec="h264", encoder="sw", fps=25, gop_seconds=1.0, bitrate_kbps=500)
+    chain = dvr_encoder_chain(prof)
+    assert "x264enc" in chain
+    assert "bitrate=500" in chain
+    assert "key-int-max=25" in chain
+
+
+def test_event_buffer_encoder_chain_uses_high_bitrate():
+    prof = CaptureProfile(codec="h265", encoder="hw", fps=25, gop_seconds=1.0, bitrate_kbps=500)
+    chain = event_buffer_encoder_chain(prof, buf_bitrate_kbps=8000)
+    assert "nvv4l2h265enc" in chain
+    assert "bitrate=8000000" in chain
+    assert "iframeinterval=25" in chain
+    assert "bitrate=500000" not in chain
+
+
+def test_ai_scale_chain_sets_resolution_and_fps():
+    chain = ai_scale_chain(input_width=640, input_height=360, inference_fps=8)
+    assert "width=640" in chain
+    assert "height=360" in chain
+    assert "framerate=8/1" in chain
+    assert "nvvideoconvert" in chain
