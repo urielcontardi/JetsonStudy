@@ -1,4 +1,5 @@
 device_name: orwell-01
+
 cameras:
   - id: "0"
     argus_sensor_id: 0
@@ -6,20 +7,36 @@ cameras:
   - id: "1"
     argus_sensor_id: 1
     name: rear
+
 capture:
   width: 1920
   height: 1080
-  fps: 60
-  codec: h265            # h264 | h265
-  encoder: hw            # hw (NVENC, Orin NX) | sw (x264enc, fallback Nano)
+  fps: 25
+  codec: h265
+  encoder: hw              # NVENC — Orin NX
   gop_seconds: 1.0
-  segment_seconds: 4.0   # fácil de mudar (ADR-0006)
-  bitrate_kbps: 8000
+  segment_seconds: 4.0
+  bitrate_kbps: 500        # arquivo direto desde o início (~20 dias de retenção)
+
 ai:
-  enabled: false         # Fase 1 = false; Fase 2 liga nvinfer/nvtracker
-preview:
-  enabled: false         # ferramenta de dev (RTSP/WebRTC via MediaMTX)
-  rtsp_base_url: rtsp://preview:8554
+  enabled: false           # true quando modelo TRT disponível em /models/detector.engine
+  inference_fps: 8
+  confidence_threshold: 0.6
+  input_width: 640
+  input_height: 360
+  model_path: /models/detector.engine
+
+event_buffer:
+  enabled: true
+  buffer_seconds: 60
+  bitrate_kbps: 8000       # alta qualidade para o clip de evento
+  tmpfs_dir: /dev/shm/orwell
+
 retention:
   data_dir: /var/lib/orwell/data
-  disk_high_watermark_pct: 50
+  events_dir: /var/lib/orwell/events
+  disk_high_watermark_pct: 85   # era 50
+
+preview:
+  enabled: false
+  rtsp_base_url: rtsp://preview:8554

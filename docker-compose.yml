@@ -7,8 +7,10 @@ services:
     environment:
       ORWELL_INDEX_DB: /data/index.sqlite
       ORWELL_DATA_DIR: /data
+      ORWELL_EVENTS_DIR: /events
     volumes:
       - ${ORWELL_DATA_DIR:-./data}:/data
+      - ${ORWELL_EVENTS_DIR:-./events}:/events
     ports:
       - "8080:8080"
 
@@ -39,10 +41,13 @@ services:
       ORWELL_CONFIG: /app/config/orwell.yaml
       ORWELL_INDEX_DB: /data/index.sqlite
       ORWELL_RETENTION__DATA_DIR: /data
+      ORWELL_RETENTION__EVENTS_DIR: /events
     volumes:
       - ${ORWELL_DATA_DIR:-./data}:/data
+      - ${ORWELL_EVENTS_DIR:-./events}:/events
       - ./config:/app/config:ro
       - /tmp/argus_socket:/tmp/argus_socket   # daemon Argus do host
+      - /dev/shm:/dev/shm                     # tmpfs compartilhado host↔container
     devices:
       - /dev/video0:/dev/video0
       # adicione mais conforme as câmeras: /dev/video1, etc.
