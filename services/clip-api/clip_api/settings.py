@@ -9,3 +9,7 @@ def index_db_path() -> str:
 
 def data_dir() -> str:
     return os.environ.get("ORWELL_DATA_DIR", "/var/lib/orwell/data")
+
+
+def events_dir() -> str:
+    return os.environ.get("ORWELL_EVENTS_DIR", "/var/lib/orwell/events")
