@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+message GetTokenResponseBody {
+  string token = 1;
+  uint32 salt = 2;
+  uint32 length = 3;
+  uint32 num_requests = 4;
+}

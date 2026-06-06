@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+message VstpRequestHeader {
+  string req = 1;
+  // field 2 reservado internamente
+  uint32 body_length = 3;
+  // field 4 = keep_connection (não usado)
+  bytes iv = 5;
+  // fields 6-11 não usados para dev routes
+  bool keep_alive = 12;
+}
+
+message VstpResponseHeader {
+  string res = 1;
+  uint32 body_length = 2;
+  bytes iv = 3;
+}
