@@ -47,3 +47,23 @@ def extract_clip(index: SegmentIndex, camera_id: str, start: float, end: float,
         if getattr(result, "returncode", 0) != 0:
             raise RuntimeError(f"ffmpeg failed: {getattr(result, 'stderr', b'')!r}")
     return out_path
+
+
+def extract_event_clip(
+    clip_dir: Path,
+    out_path: Path,
+    runner: Callable = subprocess.run,
+) -> Path:
+    """Concatena buf-*.m4s do event buffer (ordenados por mtime) em um MP4."""
+    buf_files = sorted(Path(clip_dir).glob("buf-*.m4s"), key=lambda f: f.stat().st_mtime)
+    if not buf_files:
+        raise NoSegments(f"no buf files in {clip_dir}")
+    out_path = Path(out_path)
+    with tempfile.TemporaryDirectory() as td:
+        listfile = Path(td) / "concat.txt"
+        listfile.write_text("\n".join(f"file '{f}'" for f in buf_files) + "\n")
+        cmd = build_ffmpeg_cmd(listfile, out_path)
+        result = runner(cmd, capture_output=True)
+        if getattr(result, "returncode", 0) != 0:
+            raise RuntimeError(f"ffmpeg failed: {getattr(result, 'stderr', b'')!r}")
+    return out_path

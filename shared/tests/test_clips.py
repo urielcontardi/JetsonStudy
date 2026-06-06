@@ -51,3 +51,41 @@ def test_extract_clip_raises_when_no_segments(tmp_path):
     with pytest.raises(NoSegments):
         extract_clip(idx, "0", 1.0, 2.0, tmp_path / "x.mp4",
                      init_path=tmp_path / "init.mp4", runner=lambda *a, **k: None)
+
+
+def test_extract_event_clip_concatenates_buf_files(tmp_path):
+    from orwell_shared.clips import extract_event_clip
+
+    clip_dir = tmp_path / "events" / "evt-1"
+    clip_dir.mkdir(parents=True)
+    buf0 = clip_dir / "buf-0.m4s"; buf0.write_bytes(b"OLD")
+    buf1 = clip_dir / "buf-1.m4s"; buf1.write_bytes(b"NEW")
+    buf1.touch()  # garante mtime > buf0
+
+    out = tmp_path / "event.mp4"
+    captured_concat = []
+
+    def fake_run(cmd, **_):
+        # lê o concat.txt enquanto o TemporaryDirectory ainda existe
+        concat_idx = cmd.index("-i") + 1
+        captured_concat.append(Path(cmd[concat_idx]).read_text())
+        out.write_bytes(b"MP4")
+
+        class R:
+            returncode = 0
+        return R()
+
+    result = extract_event_clip(clip_dir, out, runner=fake_run)
+    assert result == out
+    assert out.read_bytes() == b"MP4"
+    assert len(captured_concat) == 1
+    assert "buf-0.m4s" in captured_concat[0]
+    assert "buf-1.m4s" in captured_concat[0]
+
+
+def test_extract_event_clip_raises_when_no_files(tmp_path):
+    from orwell_shared.clips import NoSegments, extract_event_clip
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    with pytest.raises(NoSegments):
+        extract_event_clip(empty_dir, tmp_path / "out.mp4")
