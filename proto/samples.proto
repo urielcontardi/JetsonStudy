@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package samples.v2;
+
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// Package: one acquisition event from one device.
+// Contains everything the device produced in a single wake/sample cycle.
+// =============================================================================
+
+message Package {
+  // device identification
+  bytes device_id = 1;
+  // hardware type identification
+  bytes hardware_id = 2;
+  // unique identifier for this data package (e.g. UUID)
+  bytes data_id = 3;
+  // package format enum. The map between the format value and meaning are given by an external DB
+  string format = 4;
+  repeated Parameter format_parameters = 5;
+  // timestamp of the start point
+  google.protobuf.Timestamp started_at = 6;
+  // Duration of the package in microseconds. The package has meaning between sampled_at and sampled_at + package_duration_us
+  uint64 duration_us = 7;
+  // The reason that this package was created
+  TriggerType trigger_type = 8;
+  // Which sources are related to the trigger. The map between the value and meaning are given by an external DB
+  repeated uint32 trigger_source = 9;
+  repeated Parameter trigger_parameters = 10;
+  repeated Parameter package_parameters = 11;
+
+  // The package data.
+  reserved 12 to 14;
+  bytes data = 15;
+}
+
+message Parameter {
+  string key = 1;
+  optional double real_value = 2;
+  optional int64  integer_value = 3;
+  optional bool bool_value = 4;
+  optional string string_value = 5;
+}
+
+enum TriggerType {
+  // Wrong or unspecified trigger event
+  TRIGGER_TYPE_UNSPECIFIED = 0;
+  // Trigged by a timer event
+  TRIGGER_TYPE_PERIODIC = 1;
+  // An event condition was met (context parameters carries the specifics)
+  TRIGGER_TYPE_EVENT = 2;
+  // There was a manual request
+  TRIGGER_TYPE_MANUAL = 3;
+}
