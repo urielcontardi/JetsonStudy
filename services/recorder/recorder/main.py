@@ -20,9 +20,12 @@ import time
 from pathlib import Path
 
 from orwell_shared.config import load_config
+from orwell_shared.conveyor_client import ConveyorClient
+from orwell_shared.conveyor_uploader import ConveyorUploader
 from orwell_shared.events import EventIndex
 from orwell_shared.index import SegmentIndex
 from orwell_shared.paths import segment_path
+from orwell_shared.upload_worker import UploadWorker
 
 from .event_handler import handle_detection
 from .indexer import run_once
@@ -220,6 +223,26 @@ def main() -> None:
         p.set_state(Gst.State.PLAYING)
     print(f"recorder: {len(pipelines)} câmera(s) gravando em {config.retention.data_dir}",
           flush=True)
+
+    if config.conveyor.enabled and config.conveyor.ext_id:
+        _conveyor_client = ConveyorClient(
+            host=config.conveyor.host,
+            port=config.conveyor.port,
+            ext_id=config.conveyor.ext_id,
+        )
+        _conveyor_uploader = ConveyorUploader(
+            client=_conveyor_client,
+            ext_id=config.conveyor.ext_id,
+        )
+        _upload_worker = UploadWorker(
+            event_index=event_index,
+            uploader=_conveyor_uploader,
+            upload_interval_s=config.conveyor.upload_interval_s,
+            status_interval_s=config.conveyor.status_interval_s,
+        )
+        _upload_worker.start()
+        print(f"recorder: UploadWorker iniciado (conveyor={config.conveyor.host}:{config.conveyor.port})",
+              flush=True)
 
     stop = threading.Event()
     threading.Thread(target=_indexer_loop, args=(index, config, stop), daemon=True).start()
