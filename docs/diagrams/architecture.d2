@@ -1,140 +1,134 @@
-direction: right
+direction: down
 
 # ═══════════════════════════════════════════════════════════════════════
-# FORA DA JETSON
+# LINHA 1 — ENTRADA
 # ═══════════════════════════════════════════════════════════════════════
-
-cameras: "📷 Câmeras\nZED X One S × 2\n(hardware GMSL2)" {
+input: Entrada {
   style.fill: "#f1f3f5"
   style.stroke: "#868e96"
-}
+  style.border-radius: 8
+  direction: right
 
-operator: "👤 Operador" { shape: person }
+  cameras: "📷 Câmeras\nZED X One S × 2\nGMSL2 · kernel driver" {
+    style.fill: "#ffffff"
+    style.stroke: "#868e96"
+  }
 
-tailscale_net: "🔒 Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54" {
-  shape: oval
-  style.fill: "#e7f5ff"
-  style.stroke: "#1971c2"
-}
-
-conveyor: "☁ Conveyor  ⚠ disabled\nconveyor.tractian.com:8080\nS3 → 4cbb47c1331a/samples/" {
-  style.fill: "#fff5f5"
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-}
-
-registerapi: "omni-ops\nregister-api" {
-  style.fill: "#f3f0ff"
-  style.stroke: "#7048e8"
+  operator: "👤 Operador\nTime Tractian" {
+    shape: person
+  }
 }
 
 # ═══════════════════════════════════════════════════════════════════════
-# JETSON ORIN NX  (tudo aqui roda na placa)
+# LINHA 2 — JETSON ORIN NX
 # ═══════════════════════════════════════════════════════════════════════
-
-jetson: Jetson Orin NX {
+jetson: "Jetson Orin NX  (omnitrac-4cbb47c1331a)" {
   style.fill: "#f8f9fa"
   style.stroke: "#343a40"
+  style.border-radius: 8
+  direction: right
 
-  # ── Host (fora do Docker) ────────────────────────────────────────────
-  host: Host {
-    style.fill: "#e9ecef"
-    style.stroke: "#868e96"
-
-    argus: "Argus daemon\n(NVIDIA)" { style.fill: "#ffffff" }
-    tailscale_d: "tailscaled\n(systemd)" { style.fill: "#ffffff" }
-
-    nvme: "NVMe\nDVR segments" { shape: cylinder; style.fill: "#ffffff" }
-    sqlite: "SQLite\nindex + events" { shape: cylinder; style.fill: "#ffffff" }
-    tmpfs: "tmpfs\nbuffer 60s" { shape: cylinder; style.fill: "#fff9db" }
-    events: "events/\nclips de IA" { shape: cylinder; style.fill: "#fff5f5"; style.stroke: "#e03131" }
+  recorder: "🐳 recorder\n\nCaptura câmeras via GStreamer.\nGrava DVR contínuo em fMP4.\nBuffer circular no tmpfs (60s).\n\nAI ⚠ disabled\nUploadWorker ⚠ disabled" {
+    style.fill: "#dbe4ff"
+    style.stroke: "#4263eb"
   }
 
-  # ── Docker Compose ───────────────────────────────────────────────────
-  compose: "Docker Compose" {
+  nvme: "💾 NVMe\nDVR segments\n~20 dias" {
+    shape: cylinder
+    style.fill: "#ffffff"
+    style.stroke: "#868e96"
+  }
+
+  sqlite: "💾 SQLite\nÍndice + eventos" {
+    shape: cylinder
+    style.fill: "#ffffff"
+    style.stroke: "#868e96"
+  }
+
+  tmpfs: "💾 tmpfs\nBuffer 60s\npré-IA" {
+    shape: cylinder
+    style.fill: "#fff9db"
+    style.stroke: "#f59f00"
+  }
+
+  clipapi: "🐳 clip-api\n:8080\n\nGET /clips\nGET /events\nGET /events/{id}/clip" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  dashboard: "🐳 dashboard\n:3000\n\nInterface web\npara clips e eventos" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  preview: "🐳 preview\nDEV ONLY\n\nStream ao vivo RTSP/WebRTC\ndas câmeras. Só em dev,\nnão sobe em produção.\n:8554 · :8889" {
+    style.fill: "#f8f9fa"
+    style.stroke: "#adb5bd"
+    style.stroke-dash: 5
+  }
+}
+
+# ═══════════════════════════════════════════════════════════════════════
+# LINHA 3 — SAÍDA / INFRA
+# ═══════════════════════════════════════════════════════════════════════
+output: "Saída / Infra" {
+  style.fill: "#f1f3f5"
+  style.stroke: "#868e96"
+  style.border-radius: 8
+  direction: right
+
+  tailscale: "🔒 Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54\n\nVPN mesh. Acesso remoto\nà clip-api e dashboard." {
+    shape: oval
     style.fill: "#e7f5ff"
     style.stroke: "#1971c2"
+  }
 
-    recorder: "🐳 recorder\nNVIDIA runtime + privileged\n\nCaptura câmeras via GStreamer.\nGrava DVR contínuo no NVMe.\nBuffer circular no tmpfs." {
-      style.fill: "#dbe4ff"
-      style.stroke: "#4263eb"
+  registerapi: "omni-ops\nregister-api\n\nProvisionamento:\nautomatiza Tailscale\ncom provision.sh" {
+    style.fill: "#f3f0ff"
+    style.stroke: "#7048e8"
+  }
 
-      worker: "UploadWorker\n⚠ disabled\n\nThread do recorder.\nEnvia eventos ao Conveyor\nvia VSTP." {
-        style.fill: "#fff5f5"
-        style.stroke: "#e03131"
-        style.stroke-dash: 5
-      }
-
-      ai: "AI Inference\n⚠ ai.enabled: false\n\nDetecta objetos via TensorRT.\nFlush buffer → events/" {
-        style.fill: "#fff5f5"
-        style.stroke: "#e03131"
-        style.stroke-dash: 5
-      }
-    }
-
-    clipapi: "🐳 clip-api  :8080\n\nGET /clips\nGET /events\nGET /events/{id}/clip" {
-      style.fill: "#d3f9d8"
-      style.stroke: "#2f9e44"
-    }
-
-    dashboard: "🐳 dashboard  :3000\n\nInterface web para\nclips e eventos." {
-      style.fill: "#d3f9d8"
-      style.stroke: "#2f9e44"
-    }
-
-    preview: "🐳 preview  (dev only)\n\nStream ao vivo RTSP/WebRTC\ndas câmeras para dev.\n:8554 · :8889" {
-      style.fill: "#f8f9fa"
-      style.stroke: "#adb5bd"
-      style.stroke-dash: 5
-    }
+  conveyor: "☁ Conveyor\n⚠ disabled\n\nconveyor.tractian.com:8080\nRecebe samples via VSTP.\nSalva em S3." {
+    style.fill: "#fff5f5"
+    style.stroke: "#e03131"
+    style.stroke-dash: 5
   }
 }
 
 # ═══════════════════════════════════════════════════════════════════════
-# CONEXÕES
+# CONEXÕES — fluxo principal (sólido)
 # ═══════════════════════════════════════════════════════════════════════
+input.cameras -> jetson.recorder: "GMSL2 via Argus"
+jetson.recorder -> jetson.nvme: "grava fMP4"
+jetson.recorder -> jetson.sqlite: "indexa"
+jetson.recorder -> jetson.tmpfs: "buffer circular"
+jetson.nvme -> jetson.clipapi: "serve clips\nffmpeg -c copy"
+jetson.sqlite -> jetson.clipapi: "query"
+jetson.clipapi -> jetson.dashboard: "REST"
+jetson.dashboard -> output.tailscale: ":3000"
+jetson.clipapi -> output.tailscale: ":8080"
+output.tailscale -> input.operator: "acesso remoto"
 
-# entrada
-cameras -> jetson.host.argus: GMSL2 driver
-jetson.host.argus -> jetson.compose.recorder: frames NVMM
-jetson.host.argus -> jetson.compose.preview: stream { style.stroke-dash: 5; style.stroke: "#adb5bd" }
-
-# recorder → storage (volume mounts no host)
-jetson.compose.recorder -> jetson.host.nvme: grava fMP4
-jetson.compose.recorder -> jetson.host.tmpfs: buffer circular
-jetson.compose.recorder -> jetson.host.sqlite: indexa segmentos
-
-# AI → events (disabled)
-jetson.compose.recorder.ai -> jetson.host.events: flush clip {
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-}
-jetson.compose.recorder.ai -> jetson.host.sqlite: add_event() {
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-}
-
-# worker → Conveyor (disabled)
-jetson.compose.recorder.worker -> conveyor: VSTP pdevsample {
+# ═══════════════════════════════════════════════════════════════════════
+# CONEXÕES — fluxo desabilitado (tracejado vermelho)
+# ═══════════════════════════════════════════════════════════════════════
+jetson.recorder -> output.conveyor: "⚠ VSTP pdevsample\n(conveyor.enabled: false)" {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
-# clip-api lê storage
-jetson.host.nvme -> jetson.compose.clipapi: serve clips
-jetson.host.events -> jetson.compose.clipapi: event clips
-jetson.host.sqlite -> jetson.compose.clipapi: query
-
-# dashboard → clip-api
-jetson.compose.dashboard -> jetson.compose.clipapi: REST
-
-# acesso remoto (Tailscale → serviços)
-jetson.host.tailscale_d -> tailscale_net
-tailscale_net -> jetson.compose.clipapi: :8080
-tailscale_net -> jetson.compose.dashboard: :3000
-operator -> tailscale_net: VPN
-tailscale_net -> jetson.compose.preview: ":8554/:8889" { style.stroke-dash: 5; style.stroke: "#adb5bd" }
-
-# provisioning
-operator -> registerapi: provision.sh
-registerapi -> tailscale_net: auth_key
+# ═══════════════════════════════════════════════════════════════════════
+# CONEXÕES — dev / provisioning (tracejado cinza)
+# ═══════════════════════════════════════════════════════════════════════
+input.cameras -> jetson.preview: "stream ao vivo" {
+  style.stroke-dash: 5
+  style.stroke: "#adb5bd"
+}
+input.operator -> output.registerapi: "provision.sh" {
+  style.stroke-dash: 5
+  style.stroke: "#7048e8"
+}
+output.registerapi -> output.tailscale: "auth_key" {
+  style.stroke-dash: 5
+  style.stroke: "#7048e8"
+}
