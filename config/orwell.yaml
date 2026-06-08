@@ -40,3 +40,12 @@ retention:
 preview:
   enabled: false
   rtsp_base_url: rtsp://preview:8554
+
+conveyor:
+  enabled: false            # true após cadastrar o device no Conveyor
+  host: conveyor.tractian.com
+  port: 8080
+  # ext_id: ""              # deixar vazio = auto-derivado de blake3(eMMC CID)
+  #                         # rodar deploy/85-conveyor-register.sh para obter o valor
+  upload_interval_s: 30
+  status_interval_s: 300

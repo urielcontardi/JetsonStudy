@@ -22,6 +22,7 @@ from pathlib import Path
 from orwell_shared.config import load_config
 from orwell_shared.conveyor_client import ConveyorClient
 from orwell_shared.conveyor_uploader import ConveyorUploader
+from orwell_shared.device_id import get_ext_id
 from orwell_shared.events import EventIndex
 from orwell_shared.index import SegmentIndex
 from orwell_shared.paths import segment_path
@@ -224,15 +225,17 @@ def main() -> None:
     print(f"recorder: {len(pipelines)} câmera(s) gravando em {config.retention.data_dir}",
           flush=True)
 
-    if config.conveyor.enabled and config.conveyor.ext_id:
+    if config.conveyor.enabled:
+        ext_id = config.conveyor.ext_id or get_ext_id()
+        print(f"recorder: device ext_id={ext_id}", flush=True)
         _conveyor_client = ConveyorClient(
             host=config.conveyor.host,
             port=config.conveyor.port,
-            ext_id=config.conveyor.ext_id,
+            ext_id=ext_id,
         )
         _conveyor_uploader = ConveyorUploader(
             client=_conveyor_client,
-            ext_id=config.conveyor.ext_id,
+            ext_id=ext_id,
         )
         _upload_worker = UploadWorker(
             event_index=event_index,
