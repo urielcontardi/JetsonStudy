@@ -20,33 +20,53 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-CID_PATH="/sys/block/mmcblk0/device/cid"
-
-if [[ ! -f "${CID_PATH}" ]]; then
-  err "eMMC CID não encontrado em ${CID_PATH}"
-  err "Este script deve ser executado no Jetson."
-  exit 1
-fi
-
-CID=$(cat "${CID_PATH}" | tr -d '[:space:]')
+SERIAL_PATH="/proc/device-tree/serial-number"
+EMMC_PATH="/sys/block/mmcblk0/device/cid"
 
 if ! command -v python3 &>/dev/null; then
   err "python3 não encontrado. Rode 10-base.sh antes."
   exit 1
 fi
 
+if [[ ! -f "${SERIAL_PATH}" ]] && [[ ! -f "${EMMC_PATH}" ]]; then
+  err "Identificador de hardware não encontrado."
+  err "  Jetson NX/NVMe : ${SERIAL_PATH}"
+  err "  Jetson eMMC    : ${EMMC_PATH}"
+  exit 1
+fi
+
 EXT_ID=$(python3 - <<PYEOF
-import sys
+import sys, os
 try:
     from blake3 import blake3
 except ImportError:
     sys.exit("blake3 não instalado. Rode: pip3 install blake3")
-cid = "${CID}"
-print(blake3(bytes.fromhex(cid)).hexdigest())
+
+from pathlib import Path
+
+serial_path = "${SERIAL_PATH}"
+cid_path    = "${EMMC_PATH}"
+
+try:
+    serial = Path(serial_path).read_bytes().rstrip(b"\x00\n ").decode()
+    print(blake3(serial.encode()).hexdigest())
+    sys.exit(0)
+except FileNotFoundError:
+    pass
+
+try:
+    cid = Path(cid_path).read_text().strip()
+    print(blake3(bytes.fromhex(cid)).hexdigest())
+    sys.exit(0)
+except FileNotFoundError:
+    pass
+
+sys.exit("nenhum identificador disponível")
 PYEOF
 )
 
-log "eMMC CID : ${CID}"
+HWID=$( [[ -f "${SERIAL_PATH}" ]] && cat "${SERIAL_PATH}" | tr -d '\0\n ' || cat "${EMMC_PATH}" | tr -d '[:space:]' )
+log "hw id    : ${HWID}"
 log "ext_id   : ${EXT_ID}"
 echo ""
 echo "============================================================"

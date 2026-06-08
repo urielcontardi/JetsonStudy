@@ -5,29 +5,49 @@ from pathlib import Path
 
 from blake3 import blake3
 
-# eMMC é sempre mmcblk0 no Jetson (não é SD card nem NVMe).
-_CID_PATH = "/sys/block/mmcblk0/device/cid"
+# Jetson Orin NX com NVMe: serial único gravado no SoC (device-tree do Tegra).
+# Jetson com eMMC (Nano, AGX): CID da eMMC como fallback.
+_SERIAL_PATH = "/proc/device-tree/serial-number"
+_EMMC_CID_PATH = "/sys/block/mmcblk0/device/cid"
 
 
-def get_ext_id(cid_path: str = _CID_PATH) -> str:
-    """Deriva o extId do dispositivo a partir do eMMC CID.
+def get_ext_id(
+    serial_path: str = _SERIAL_PATH,
+    cid_path: str = _EMMC_CID_PATH,
+) -> str:
+    """Deriva o extId do dispositivo a partir de um identificador único de hardware.
 
-    No Jetson: lê /sys/block/mmcblk0/device/cid (32 hex chars, único por placa).
-    Fora do Jetson (dev/CI): usa a env var ORWELL_DEVICE_ID.
+    Ordem de tentativa:
+      1. /proc/device-tree/serial-number  — serial do SoC Tegra (NX com NVMe)
+      2. /sys/block/mmcblk0/device/cid    — CID da eMMC (Nano/AGX com eMMC)
+      3. ORWELL_DEVICE_ID env var          — override para dev/CI (macOS, container)
     """
+    # 1. Device-tree serial (Jetson Orin NX / NVMe)
+    try:
+        serial = Path(serial_path).read_bytes().strip(b"\x00\n ").decode()
+        if serial:
+            return blake3(serial.encode()).hexdigest()
+    except FileNotFoundError:
+        pass
+
+    # 2. eMMC CID (Jetson Nano / AGX)
     try:
         cid_hex = Path(cid_path).read_text().strip()
-        return blake3(bytes.fromhex(cid_hex)).hexdigest()
+        if cid_hex:
+            return blake3(bytes.fromhex(cid_hex)).hexdigest()
     except FileNotFoundError:
         pass
     except ValueError as exc:
         raise RuntimeError(f"CID inválido em {cid_path}: {exc}") from exc
 
+    # 3. Env var (dev / CI)
     fallback = os.environ.get("ORWELL_DEVICE_ID", "").strip()
     if fallback:
         return fallback
 
     raise RuntimeError(
-        f"eMMC CID não encontrado em {cid_path} e ORWELL_DEVICE_ID não definido.\n"
-        "No Jetson este arquivo deve existir. Em dev, defina ORWELL_DEVICE_ID=<id>."
+        "Identificador de hardware não encontrado.\n"
+        f"  Jetson NX/NVMe : {serial_path}\n"
+        f"  Jetson eMMC    : {cid_path}\n"
+        "  Dev/CI         : export ORWELL_DEVICE_ID=<id>"
     )
