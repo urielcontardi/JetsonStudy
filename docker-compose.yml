@@ -25,11 +25,11 @@ services:
       ORWELL_INDEX_DB: /data/index.sqlite
       ORWELL_EVENTS_DIR: /events
       ORWELL_CONFIG: /app/config/orwell.yaml
+      ORWELL_DEVICE_ID: ${ORWELL_DEVICE_ID:-}  # MAC do host; setado pelo provisioning em .env
     volumes:
       - ${ORWELL_DATA_DIR:-./data}:/data
       - ${ORWELL_EVENTS_DIR:-./events}:/events
       - ./config:/app/config:ro
-      - /sys/class/net:/sys/class/net:ro  # get_ext_id() lê MAC físico do host
     depends_on: []
 
   dashboard:
