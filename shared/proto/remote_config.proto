@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package orwell.config.v1;
+
+// Subconjunto de OrwellConfig que pode ser empurrado remotamente pelo Conveyor.
+// Campos de hardware (câmeras, codec, sensor IDs) ficam fora — exigem redeploy.
+message RemoteConfig {
+  bool   periodic_upload_enabled    = 1;
+  uint32 periodic_upload_interval_s = 2;
+  uint32 buffer_seconds             = 3;
+
+  // Reservado para fase AI:
+  // float  confidence_threshold  = 10;
+  // string model_path            = 11;
+  // uint32 inference_fps         = 12;
+}
