@@ -29,6 +29,7 @@ services:
       - ${ORWELL_DATA_DIR:-./data}:/data
       - ${ORWELL_EVENTS_DIR:-./events}:/events
       - ./config:/app/config:ro
+      - /sys/class/net:/sys/class/net:ro  # get_ext_id() lê MAC físico do host
     depends_on: []
 
   dashboard:
