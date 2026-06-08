@@ -4,49 +4,71 @@ jetson: Jetson Orin NX {
   style.fill: "#f8f9fa"
   style.stroke: "#343a40"
 
-  cameras: Câmeras ZED X One S {
+  # ── Hardware / Host ────────────────────────────────────────────────────────
+  cameras: "Câmeras ZED X One S\n(hardware / GMSL2 kernel driver)" {
     style.fill: "#e9ecef"
-    cam0: cam0 GMSL2
-    cam1: cam1 GMSL2
+    style.stroke: "#868e96"
+    cam0: cam0
+    cam1: cam1
   }
 
-  recorder: recorder {
-    style.fill: "#dbe4ff"
-    style.stroke: "#4263eb"
+  host_services: "Host" {
+    style.fill: "#e9ecef"
+    style.stroke: "#868e96"
+    tailscale_d: "tailscaled\n(systemd)"
+    argus: "Argus daemon\n(NVIDIA)"
+  }
 
-    pipeline: GStreamer Pipeline {
-      style.fill: "#edf2ff"
-      dvr: "Branch A — DVR\nnvv4l2h265enc → NVMe"
-      buf: "Branch C — Event Buffer\ntmpfs circular 60s"
-      ai: "Branch B — AI Inference\n⚠ disabled" {
+  storage: "Storage (host volumes)" {
+    style.fill: "#e9ecef"
+    style.stroke: "#868e96"
+    nvme: "NVMe\nDVR segments" { shape: cylinder }
+    events: "events\nclips pós-IA" { shape: cylinder }
+    sqlite: "SQLite\nindex + events" { shape: cylinder }
+    tmpfs: "tmpfs /dev/shm\nevent buffer" { shape: cylinder; style.fill: "#fff8e1" }
+  }
+
+  # ── Docker Compose ─────────────────────────────────────────────────────────
+  compose: "Docker Compose  (3 containers)" {
+    style.fill: "#e7f5ff"
+    style.stroke: "#1971c2"
+
+    recorder: "recorder\n(profile: jetson)\nNVIDIA runtime + privileged" {
+      style.fill: "#dbe4ff"
+      style.stroke: "#4263eb"
+
+      pipeline: GStreamer Pipeline {
+        style.fill: "#edf2ff"
+        dvr: "Branch A — DVR\nnvv4l2h265enc"
+        buf: "Branch C — Event Buffer\ntmpfs 60s circular"
+        ai: "Branch B — AI\n⚠ disabled" {
+          style.fill: "#fff0f0"
+          style.stroke: "#e03131"
+        }
+      }
+
+      worker: "UploadWorker  ⚠ disabled" {
         style.fill: "#fff0f0"
         style.stroke: "#e03131"
+        style.stroke-dash: 5
       }
     }
 
-    worker: "UploadWorker  ⚠ disabled" {
-      style.fill: "#fff0f0"
-      style.stroke: "#e03131"
+    clipapi: "clip-api\n:8080" {
+      style.fill: "#d3f9d8"
+      style.stroke: "#2f9e44"
+    }
+
+    dashboard: "dashboard\n:3000" {
+      style.fill: "#d3f9d8"
+      style.stroke: "#2f9e44"
+    }
+
+    preview: "preview  (dev only)\nMediaMTX :8554 :8889" {
+      style.fill: "#f0f0f0"
+      style.stroke: "#868e96"
       style.stroke-dash: 5
     }
-  }
-
-  clipapi: "clip-api  :8080" {
-    style.fill: "#d3f9d8"
-    style.stroke: "#2f9e44"
-  }
-
-  dashboard: "dashboard  :3000" {
-    style.fill: "#d3f9d8"
-    style.stroke: "#2f9e44"
-  }
-
-  storage: Armazenamento {
-    style.fill: "#e9ecef"
-    nvme: "NVMe — DVR segments" { shape: cylinder }
-    events: "events — clips pós-IA" { shape: cylinder }
-    sqlite: "SQLite — index + events" { shape: cylinder }
-    tmpfs: "tmpfs — event buffer" { shape: cylinder; style.fill: "#fff8e1" }
   }
 }
 
@@ -60,32 +82,39 @@ conveyor: "Conveyor  ⚠ disabled" {
 
 infra: Infra {
   style.fill: "#f8f9fa"
-  tailscale: "Tailscale\nomnitrac-4cbb47c1331a" { shape: oval; style.fill: "#e7f5ff"; style.stroke: "#1971c2" }
-  registerapi: "omni-ops\nregister-api" { style.fill: "#ebfbee"; style.stroke: "#2f9e44" }
+  tailscale: "Tailscale\nomnitrac-4cbb47c1331a" {
+    shape: oval
+    style.fill: "#e7f5ff"
+    style.stroke: "#1971c2"
+  }
+  registerapi: "omni-ops\nregister-api" {
+    style.fill: "#ebfbee"
+    style.stroke: "#2f9e44"
+  }
 }
 
 operator: Operador { shape: person }
 
 # ── câmeras → pipeline ────────────────────────────────────────────────────────
-jetson.cameras -> jetson.recorder.pipeline: NVMM frames
+jetson.cameras -> jetson.compose.recorder.pipeline: NVMM via Argus
 
 # ── pipeline → storage ────────────────────────────────────────────────────────
-jetson.recorder.pipeline.dvr -> jetson.storage.nvme
-jetson.recorder.pipeline.dvr -> jetson.storage.sqlite: index
-jetson.recorder.pipeline.buf -> jetson.storage.tmpfs
+jetson.compose.recorder.pipeline.dvr -> jetson.storage.nvme
+jetson.compose.recorder.pipeline.dvr -> jetson.storage.sqlite: index
+jetson.compose.recorder.pipeline.buf -> jetson.storage.tmpfs
 
 # ── AI → eventos (disabled) ──────────────────────────────────────────────────
-jetson.recorder.pipeline.ai -> jetson.storage.events: flush clip {
+jetson.compose.recorder.pipeline.ai -> jetson.storage.events: flush clip {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
-jetson.recorder.pipeline.ai -> jetson.storage.sqlite: add_event() {
+jetson.compose.recorder.pipeline.ai -> jetson.storage.sqlite: add_event() {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
 # ── worker → Conveyor (disabled) ─────────────────────────────────────────────
-jetson.recorder.worker -> conveyor.vstp: samples.v2.Package {
+jetson.compose.recorder.worker -> conveyor.vstp: samples.v2.Package {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
@@ -94,17 +123,17 @@ conveyor.vstp -> conveyor.s3 {
   style.stroke-dash: 5
 }
 
-# ── clip-api ──────────────────────────────────────────────────────────────────
-jetson.storage.nvme -> jetson.clipapi: ffmpeg -c copy
-jetson.storage.sqlite -> jetson.clipapi: query
-jetson.storage.events -> jetson.clipapi
-jetson.dashboard -> jetson.clipapi: REST
+# ── clip-api + dashboard ──────────────────────────────────────────────────────
+jetson.storage.nvme -> jetson.compose.clipapi: ffmpeg -c copy
+jetson.storage.sqlite -> jetson.compose.clipapi: query
+jetson.storage.events -> jetson.compose.clipapi
+jetson.compose.dashboard -> jetson.compose.clipapi: REST
 
 # ── acesso remoto ─────────────────────────────────────────────────────────────
 operator -> infra.tailscale
-infra.tailscale -> jetson.clipapi: :8080
-infra.tailscale -> jetson.dashboard: :3000
+infra.tailscale -> jetson.compose.clipapi: :8080
+infra.tailscale -> jetson.compose.dashboard: :3000
 
 # ── provisioning ──────────────────────────────────────────────────────────────
-operator -> infra.registerapi: "provision.sh"
+operator -> infra.registerapi: provision.sh
 infra.registerapi -> infra.tailscale: auth_key
