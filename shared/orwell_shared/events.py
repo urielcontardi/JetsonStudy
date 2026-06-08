@@ -17,6 +17,7 @@ class Event:
     clip_path: str | None = None
     uploaded_at: float | None = None
     created_at: float = field(default_factory=time.time)
+    trigger_type: str = "ai"
 
 
 _SCHEMA = """
@@ -29,10 +30,15 @@ CREATE TABLE IF NOT EXISTS events (
     bbox_json   TEXT,
     clip_path   TEXT,
     uploaded_at REAL,
-    created_at  REAL NOT NULL
+    created_at  REAL NOT NULL,
+    trigger_type TEXT NOT NULL DEFAULT 'ai'
 );
 CREATE INDEX IF NOT EXISTS idx_events_cam_time ON events(camera_id, t_evento);
 """
+
+_MIGRATION_ADD_TRIGGER_TYPE = (
+    "ALTER TABLE events ADD COLUMN trigger_type TEXT NOT NULL DEFAULT 'ai'"
+)
 
 
 class EventIndex:
@@ -42,16 +48,22 @@ class EventIndex:
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(_SCHEMA)
-        self._conn.commit()
+        try:
+            self._conn.execute(_MIGRATION_ADD_TRIGGER_TYPE)
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass  # coluna já existe
 
     def add_event(self, event: Event) -> None:
         self._conn.execute(
             "INSERT INTO events"
-            "(id,camera_id,t_evento,label,confidence,bbox_json,clip_path,uploaded_at,created_at)"
-            " VALUES(?,?,?,?,?,?,?,?,?)",
+            "(id,camera_id,t_evento,label,confidence,bbox_json,clip_path,uploaded_at,created_at,trigger_type)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?)",
             (event.id, event.camera_id, event.t_evento, event.label, event.confidence,
-             event.bbox_json, event.clip_path, event.uploaded_at, event.created_at),
+             event.bbox_json, event.clip_path, event.uploaded_at, event.created_at,
+             event.trigger_type),
         )
         self._conn.commit()
 
@@ -90,6 +102,20 @@ class EventIndex:
         )
         self._conn.commit()
 
+    def upload_stats(self) -> dict:
+        row = self._conn.execute(
+            "SELECT "
+            "  COUNT(CASE WHEN uploaded_at IS NULL THEN 1 END) AS pending, "
+            "  COUNT(CASE WHEN uploaded_at = -1.0 THEN 1 END) AS failed, "
+            "  MAX(CASE WHEN uploaded_at > 0 THEN uploaded_at END) AS last_uploaded_at "
+            "FROM events"
+        ).fetchone()
+        return {
+            "pending": row["pending"],
+            "failed": row["failed"],
+            "last_uploaded_at": row["last_uploaded_at"],
+        }
+
     @staticmethod
     def _row(r: sqlite3.Row) -> Event:
         return Event(
@@ -97,4 +123,5 @@ class EventIndex:
             label=r["label"], confidence=r["confidence"], bbox_json=r["bbox_json"],
             clip_path=r["clip_path"], uploaded_at=r["uploaded_at"],
             created_at=r["created_at"],
+            trigger_type=r["trigger_type"] if "trigger_type" in r.keys() else "ai",
         )

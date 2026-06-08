@@ -102,3 +102,62 @@ def test_pending_uploads_multiple_events(idx):
     idx.mark_uploaded("p2")
     ids = {e.id for e in idx.pending_uploads()}
     assert ids == {"p1", "p3"}
+
+
+def test_trigger_type_default_is_ai(idx):
+    ev = _event()
+    idx.add_event(ev)
+    result = idx.get("evt-1")
+    assert result.trigger_type == "ai"
+
+
+def test_trigger_type_periodic_persists(idx):
+    ev = _event(id="p1", trigger_type="periodic")
+    idx.add_event(ev)
+    result = idx.get("p1")
+    assert result.trigger_type == "periodic"
+
+
+def test_trigger_type_migration_on_existing_db(tmp_path):
+    """DB sem coluna trigger_type deve ser migrado automaticamente."""
+    import sqlite3
+    db = tmp_path / "legacy.sqlite"
+    conn = sqlite3.connect(str(db))
+    conn.execute("""
+        CREATE TABLE events (
+            id TEXT PRIMARY KEY, camera_id TEXT NOT NULL, t_evento REAL NOT NULL,
+            label TEXT NOT NULL, confidence REAL NOT NULL, bbox_json TEXT,
+            clip_path TEXT, uploaded_at REAL, created_at REAL NOT NULL
+        )
+    """)
+    conn.execute(
+        "INSERT INTO events VALUES('e1','cam0',1.0,'smoke',0.9,NULL,NULL,NULL,1.0)"
+    )
+    conn.commit()
+    conn.close()
+
+    idx = EventIndex(db)
+    ev = idx.get("e1")
+    assert ev is not None
+    assert ev.trigger_type == "ai"
+
+
+def test_upload_stats_empty(idx):
+    stats = idx.upload_stats()
+    assert stats["pending"] == 0
+    assert stats["failed"] == 0
+    assert stats["last_uploaded_at"] is None
+
+
+def test_upload_stats_counts(idx):
+    idx.add_event(_event(id="p1", clip_path="/events/p1"))          # pending
+    idx.add_event(_event(id="p2", clip_path="/events/p2"))          # pending
+    idx.add_event(_event(id="f1", clip_path="/events/f1"))          # failed
+    idx.mark_upload_failed("f1")
+    idx.add_event(_event(id="u1", clip_path="/events/u1"))          # uploaded
+    idx.mark_uploaded("u1")
+
+    stats = idx.upload_stats()
+    assert stats["pending"] == 2
+    assert stats["failed"] == 1
+    assert stats["last_uploaded_at"] is not None
