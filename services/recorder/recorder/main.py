@@ -20,16 +20,14 @@ import time
 from pathlib import Path
 
 from orwell_shared.config import load_config
-from orwell_shared.conveyor_client import ConveyorClient
-from orwell_shared.conveyor_uploader import ConveyorUploader
-from orwell_shared.device_id import get_ext_id
+from orwell_shared.config_watcher import ConfigWatcher
 from orwell_shared.events import EventIndex
 from orwell_shared.index import SegmentIndex
 from orwell_shared.paths import segment_path
-from orwell_shared.upload_worker import UploadWorker
 
 from .event_handler import handle_detection
 from .indexer import run_once
+from .periodic_flusher import PeriodicFlusher
 from .pipeline import (
     ai_scale_chain,
     build_raw_source,
@@ -192,7 +190,8 @@ def main() -> None:
 
     Gst.init(None)
 
-    config = load_config(os.environ.get("ORWELL_CONFIG", "/app/config/orwell.yaml"))
+    config_path = os.environ.get("ORWELL_CONFIG", "/app/config/orwell.yaml")
+    config = load_config(config_path)
     db_path = os.environ.get("ORWELL_INDEX_DB", f"{config.retention.data_dir}/index.sqlite")
     index = SegmentIndex(db_path)
     event_index = EventIndex(db_path)
@@ -225,29 +224,35 @@ def main() -> None:
     print(f"recorder: {len(pipelines)} câmera(s) gravando em {config.retention.data_dir}",
           flush=True)
 
-    if config.conveyor.enabled:
-        gateway_ext_id = config.conveyor.gateway_ext_id
-        sensor_ext_id = config.conveyor.sensor_ext_id or get_ext_id()
-        print(f"recorder: gateway_ext_id={gateway_ext_id} sensor_ext_id={sensor_ext_id}", flush=True)
-        _conveyor_client = ConveyorClient(
-            host=config.conveyor.host,
-            port=config.conveyor.port,
-            gateway_ext_id=gateway_ext_id,
-            sensor_ext_id=sensor_ext_id,
+    camera_ids = [cam.id for cam in available]
+    flusher = PeriodicFlusher(
+        cameras=camera_ids,
+        tmpfs_dir=config.event_buffer.tmpfs_dir,
+        events_dir=config.retention.events_dir,
+        event_index=event_index,
+        interval_s=config.conveyor.periodic_upload_interval_s,
+        enabled=config.conveyor.periodic_upload_enabled and config.conveyor.enabled,
+    )
+    flusher.start()
+    print(
+        f"recorder: PeriodicFlusher iniciado "
+        f"(enabled={config.conveyor.periodic_upload_enabled}, "
+        f"interval={config.conveyor.periodic_upload_interval_s}s)",
+        flush=True,
+    )
+
+    def _on_config_change(new_cfg) -> None:
+        flusher.update_config(
+            enabled=new_cfg.conveyor.periodic_upload_enabled and new_cfg.conveyor.enabled,
+            interval_s=new_cfg.conveyor.periodic_upload_interval_s,
         )
-        _conveyor_uploader = ConveyorUploader(
-            client=_conveyor_client,
-            sensor_ext_id=sensor_ext_id,
+        print(
+            f"recorder: config recarregada — periodic interval={new_cfg.conveyor.periodic_upload_interval_s}s",
+            flush=True,
         )
-        _upload_worker = UploadWorker(
-            event_index=event_index,
-            uploader=_conveyor_uploader,
-            upload_interval_s=config.conveyor.upload_interval_s,
-            status_interval_s=config.conveyor.status_interval_s,
-        )
-        _upload_worker.start()
-        print(f"recorder: UploadWorker iniciado (conveyor={config.conveyor.host}:{config.conveyor.port})",
-              flush=True)
+
+    watcher = ConfigWatcher(config_path, _on_config_change)
+    watcher.start()
 
     stop = threading.Event()
     threading.Thread(target=_indexer_loop, args=(index, config, stop), daemon=True).start()
@@ -259,6 +264,8 @@ def main() -> None:
         pass
     finally:
         stop.set()
+        flusher.stop()
+        watcher.stop()
         for p in pipelines:
             p.set_state(Gst.State.NULL)
 
