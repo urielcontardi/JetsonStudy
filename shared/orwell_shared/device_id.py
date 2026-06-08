@@ -22,13 +22,22 @@ def _mac_of(iface: str) -> str | None:
 def get_ext_id() -> str:
     """Retorna o extId do dispositivo: MAC da interface física principal (12 hex chars).
 
-    Ordem de preferência: eth/en > wl > qualquer outra física.
-    Fallback: ORWELL_DEVICE_ID env var (dev / CI / macOS).
+    Ordem de preferência:
+      1. ORWELL_DEVICE_ID env var — sempre tem prioridade (necessário em containers Docker,
+         onde /sys/class/net expõe interfaces virtuais, não o hardware do host).
+      2. Auto-detecção via /sys/class/net: eth/en > wl > outra física.
 
     Exemplos:
-        Jetson Orin NX : 4cbb47c1331a
-        macOS dev      : export ORWELL_DEVICE_ID=mymacdevice
+        Jetson (host)     : auto-detecta enP8p1s0 → 4cbb47c1331a
+        Container Docker  : ORWELL_DEVICE_ID=4cbb47c1331a (via .env / docker-compose)
+        macOS dev / CI    : export ORWELL_DEVICE_ID=mymacdevice
     """
+    # Env var tem prioridade — essencial quando rodando dentro de container Docker,
+    # onde as interfaces de /sys/class/net são virtuais (eth0 do container, não do host).
+    explicit = os.environ.get("ORWELL_DEVICE_ID", "").strip()
+    if explicit:
+        return explicit
+
     net_root = Path("/sys/class/net")
 
     try:
@@ -55,12 +64,8 @@ def get_ext_id() -> str:
         if mac:
             return mac
 
-    # Fallback para env var (dev / CI)
-    fallback = os.environ.get("ORWELL_DEVICE_ID", "").strip()
-    if fallback:
-        return fallback
-
     raise RuntimeError(
         "Nenhuma interface de rede física encontrada e ORWELL_DEVICE_ID não definido.\n"
+        "Em container Docker: defina ORWELL_DEVICE_ID no .env ou docker-compose.yml.\n"
         "Em dev/CI: export ORWELL_DEVICE_ID=<id>"
     )
