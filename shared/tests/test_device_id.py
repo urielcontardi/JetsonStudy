@@ -1,100 +1,133 @@
 import os
 import pytest
-from blake3 import blake3
+from unittest.mock import patch
 from orwell_shared.device_id import get_ext_id
 
 
-# ── device-tree serial (Jetson NX / NVMe) ────────────────────────────────────
+def _mock_net(ifaces: dict, monkeypatch):
+    """ifaces = {"eth0": "4c:bb:47:c1:33:1a", "lo": "00:00:00:00:00:00", ...}"""
+    import pathlib
 
-def test_derives_ext_id_from_device_tree_serial(tmp_path):
-    serial_file = tmp_path / "serial-number"
-    serial_file.write_bytes(b"1424625032396\x00")  # device-tree inclui null byte
+    class _FakePath:
+        def __init__(self, path):
+            self._path = str(path)
 
-    result = get_ext_id(serial_path=str(serial_file), cid_path=str(tmp_path / "no_cid"))
+        def __truediv__(self, other):
+            return _FakePath(f"{self._path}/{other}")
 
-    expected = blake3(b"1424625032396").hexdigest()
-    assert result == expected
+        def iterdir(self):
+            return [_FakePath(f"/sys/class/net/{k}") for k in ifaces]
 
+        @property
+        def name(self):
+            return self._path.split("/")[-1]
 
-def test_known_jetson_ext_id(tmp_path):
-    """Valor real do Jetson Orin NX do projeto."""
-    serial_file = tmp_path / "serial-number"
-    serial_file.write_bytes(b"1424625032396")
+        def read_text(self):
+            iface = self._path.split("/")[-2]
+            if iface in ifaces and "address" in self._path:
+                return ifaces[iface] + "\n"
+            raise FileNotFoundError(self._path)
 
-    result = get_ext_id(serial_path=str(serial_file), cid_path=str(tmp_path / "no_cid"))
+        def startswith(self, prefix):
+            return str(self._path).startswith(prefix)
 
-    assert result == "1e2f2caf4860137f0d335514ef1182bfeb6af354c053c0e72130820dba5e19eb"
-
-
-def test_strips_null_and_whitespace_from_serial(tmp_path):
-    serial_file = tmp_path / "serial-number"
-    serial_file.write_bytes(b"  1424625032396\x00\n")
-
-    result = get_ext_id(serial_path=str(serial_file), cid_path=str(tmp_path / "no_cid"))
-
-    expected = blake3(b"1424625032396").hexdigest()
-    assert result == expected
+    monkeypatch.setattr("orwell_shared.device_id.Path", _FakePath)
 
 
-# ── eMMC CID fallback (Jetson Nano / AGX) ────────────────────────────────────
-
-def test_falls_back_to_emmc_cid_when_no_serial(tmp_path):
-    cid = "0a0000004f4c4f3400000000159001d7"
-    cid_file = tmp_path / "cid"
-    cid_file.write_text(cid + "\n")
-
-    result = get_ext_id(serial_path=str(tmp_path / "no_serial"), cid_path=str(cid_file))
-
-    expected = blake3(bytes.fromhex(cid)).hexdigest()
-    assert result == expected
-
-
-# ── env var fallback (dev / CI) ───────────────────────────────────────────────
-
-def test_falls_back_to_env_var_when_no_hardware(monkeypatch, tmp_path):
-    monkeypatch.setenv("ORWELL_DEVICE_ID", "mydeviceid123")
-
-    result = get_ext_id(
-        serial_path=str(tmp_path / "no_serial"),
-        cid_path=str(tmp_path / "no_cid"),
+def test_returns_ethernet_mac(monkeypatch):
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({
+            "enP8p1s0": "4c:bb:47:c1:33:1a",
+            "wlP1p1s0": "bc:d2:2c:13:6d:6b",
+            "lo": "00:00:00:00:00:00",
+        }, str(p)),
     )
-    assert result == "mydeviceid123"
+    result = get_ext_id()
+    assert result == "4cbb47c1331a"
 
 
-def test_raises_when_nothing_available(monkeypatch, tmp_path):
+def test_prefers_ethernet_over_wifi(monkeypatch):
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({
+            "wlP1p1s0": "bc:d2:2c:13:6d:6b",
+            "enP8p1s0": "4c:bb:47:c1:33:1a",
+        }, str(p)),
+    )
+    result = get_ext_id()
+    assert result == "4cbb47c1331a"
+
+
+def test_skips_virtual_interfaces(monkeypatch):
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({
+            "docker0": "02:42:ac:11:00:01",
+            "veth123": "aa:bb:cc:dd:ee:ff",
+            "tailscale0": "aa:bb:cc:00:00:01",
+            "wlP1p1s0": "bc:d2:2c:13:6d:6b",
+        }, str(p)),
+    )
+    result = get_ext_id()
+    assert result == "bcd22c136d6b"
+
+
+def test_falls_back_to_env_var(monkeypatch):
+    monkeypatch.setenv("ORWELL_DEVICE_ID", "mydevice0011")
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({}, str(p)),
+    )
+    assert get_ext_id() == "mydevice0011"
+
+
+def test_raises_when_no_interface_and_no_env(monkeypatch):
     monkeypatch.delenv("ORWELL_DEVICE_ID", raising=False)
-
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({}, str(p)),
+    )
     with pytest.raises(RuntimeError, match="ORWELL_DEVICE_ID"):
-        get_ext_id(
-            serial_path=str(tmp_path / "no_serial"),
-            cid_path=str(tmp_path / "no_cid"),
-        )
+        get_ext_id()
 
 
-# ── propriedades gerais ───────────────────────────────────────────────────────
-
-def test_ext_id_is_64_hex_chars(tmp_path):
-    serial_file = tmp_path / "serial-number"
-    serial_file.write_bytes(b"1424625032396")
-
-    result = get_ext_id(serial_path=str(serial_file), cid_path=str(tmp_path / "no_cid"))
-
-    assert len(result) == 64
+def test_mac_is_12_lowercase_hex(monkeypatch):
+    monkeypatch.setattr(
+        "orwell_shared.device_id.Path",
+        lambda p: _make_path_mock({"eth0": "4C:BB:47:C1:33:1A"}, str(p)),
+    )
+    result = get_ext_id()
+    assert result == "4cbb47c1331a"
+    assert len(result) == 12
     assert all(c in "0123456789abcdef" for c in result)
 
 
-def test_same_serial_always_same_ext_id(tmp_path):
-    serial_file = tmp_path / "serial-number"
-    serial_file.write_bytes(b"1424625032396")
+# ── helpers ──────────────────────────────────────────────────────────────────
 
-    assert (get_ext_id(str(serial_file), str(tmp_path / "x")) ==
-            get_ext_id(str(serial_file), str(tmp_path / "x")))
+class _PathMock:
+    def __init__(self, path: str, ifaces: dict):
+        self._path = path
+        self._ifaces = ifaces
+
+    def __truediv__(self, other):
+        return _PathMock(f"{self._path}/{other}", self._ifaces)
+
+    def iterdir(self):
+        return [_PathMock(f"/sys/class/net/{k}", self._ifaces) for k in self._ifaces]
+
+    @property
+    def name(self):
+        return self._path.split("/")[-1]
+
+    def read_text(self):
+        parts = self._path.split("/")
+        if "address" in parts:
+            iface = parts[-2]
+            if iface in self._ifaces:
+                return self._ifaces[iface] + "\n"
+        raise FileNotFoundError(self._path)
 
 
-def test_different_serials_produce_different_ids(tmp_path):
-    s1 = tmp_path / "s1"
-    s2 = tmp_path / "s2"
-    s1.write_bytes(b"1424625032396")
-    s2.write_bytes(b"1424625032397")
-
-    assert get_ext_id(str(s1), str(tmp_path / "x")) != get_ext_id(str(s2), str(tmp_path / "x"))
+def _make_path_mock(ifaces: dict, path: str):
+    return _PathMock(path, ifaces)
