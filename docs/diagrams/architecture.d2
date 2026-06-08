@@ -80,7 +80,7 @@ jetson.storage -> jetson.clipapi: "serve clips\nquery"
 jetson.clipapi -> jetson.dashboard: REST
 jetson.dashboard -> tailscale: :3000
 jetson.clipapi -> tailscale: :8080
-tailscale -> operator: acesso remoto
+operator -> tailscale: acesso remoto
 
 # ─────────────────────────────────────────────────────────────────────
 # Fluxo desabilitado ───────────────────────────────────────────────────
