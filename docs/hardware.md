@@ -69,7 +69,20 @@ A NVIDIA confirma ("Software Encode in Orin Nano") que o **Orin Nano não possui
   ~5–7 GB/h no total → ~120–170 GB/dia. Em NVMe de 1 TB ≈ vários dias; 2 TB ≈ ~1–2 semanas.
   **Validar empíricamente** (bitrate real depende de preset e cena).
 
-## 7. Rede e tempo
+## 7. Ambiente validado (device em uso — 2026-06-08)
+
+| Item | Valor |
+|---|---|
+| Hostname (Tailscale) | `omnitrac-4cbb47c1331a` |
+| IP Tailscale | `100.109.171.54` |
+| MAC Ethernet (`enP8p1s0`) | `4c:bb:47:c1:33:1a` |
+| sensor_ext_id (Conveyor) | `4cbb47c1331a` |
+| OS | Ubuntu 22.04.5 LTS (Jammy Jellyfish) |
+| Kernel | `5.15.148-tegra` |
+| JetPack / L4T | **R36.4.7** |
+| Arquitetura | `aarch64` |
+
+## 8. Rede e tempo
 
 - **Tailscale** no host para acesso remoto (ver [`operations.md`](operations.md)).
 - **NTP** habilitado no host — o índice e os recortes dependem de **tempo confiável (UTC)**.
