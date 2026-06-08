@@ -226,16 +226,18 @@ def main() -> None:
           flush=True)
 
     if config.conveyor.enabled:
-        ext_id = config.conveyor.ext_id or get_ext_id()
-        print(f"recorder: device ext_id={ext_id}", flush=True)
+        gateway_ext_id = config.conveyor.gateway_ext_id
+        sensor_ext_id = config.conveyor.sensor_ext_id or get_ext_id()
+        print(f"recorder: gateway_ext_id={gateway_ext_id} sensor_ext_id={sensor_ext_id}", flush=True)
         _conveyor_client = ConveyorClient(
             host=config.conveyor.host,
             port=config.conveyor.port,
-            ext_id=ext_id,
+            gateway_ext_id=gateway_ext_id,
+            sensor_ext_id=sensor_ext_id,
         )
         _conveyor_uploader = ConveyorUploader(
             client=_conveyor_client,
-            ext_id=ext_id,
+            sensor_ext_id=sensor_ext_id,
         )
         _upload_worker = UploadWorker(
             event_index=event_index,

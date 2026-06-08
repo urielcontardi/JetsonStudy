@@ -10,18 +10,29 @@ from orwell_shared.vstp import decode_response_header, encode_request_header
 
 
 class ConveyorClient:
+    """Cliente VSTP para o Conveyor.
+
+    gateway_ext_id — extId do gateway virtual compartilhado (cadastrado no Conveyor).
+                     Usado para auth (ggt) e como vars[0] em todas as rotas.
+    sensor_ext_id  — extId único do dispositivo (blake3 do eMMC CID).
+                     Usado como vars[2]; determina o path no S3. Não precisa de cadastro.
+    """
+
     def __init__(
         self,
         host: str,
         port: int,
-        ext_id: str,
+        gateway_ext_id: str,
+        sensor_ext_id: str,
         timeout: float = 10.0,
     ) -> None:
         self._host = host
         self._port = port
-        self._ext_id = ext_id
+        self._gateway_ext_id = gateway_ext_id
+        self._sensor_ext_id = sensor_ext_id
         self._timeout = timeout
-        self._blake3_hash = blake3(ext_id.encode()).hexdigest()
+        # Hash do gateway — igual ao que o Conveyor tem no DB para derivar o secret.
+        self._blake3_hash = blake3(gateway_ext_id.encode()).hexdigest()
         self._token: dict | None = None
         self._secret: str = ""
         self._lock = threading.Lock()
@@ -41,7 +52,7 @@ class ConveyorClient:
             return b"".join(chunks)
 
     def _get_auth(self) -> None:
-        req = f"ggt:{self._ext_id}"
+        req = f"ggt:{self._gateway_ext_id}"
         response = self._send(encode_request_header(req, b""))
         res, body = decode_response_header(response)
         if res != "OK":
@@ -77,7 +88,7 @@ class ConveyorClient:
     def send_dev_sample(self, body: bytes) -> None:
         with self._lock:
             secret = self._get_secret()
-            req = f"pdevsample:{self._ext_id}:{secret}:{self._ext_id}"
+            req = f"pdevsample:{self._gateway_ext_id}:{secret}:{self._sensor_ext_id}"
             response = self._send(encode_request_header(req, body))
             res, _ = decode_response_header(response)
             if res != "OK":
@@ -86,7 +97,7 @@ class ConveyorClient:
     def send_dev_status(self, body: bytes) -> None:
         with self._lock:
             secret = self._get_secret()
-            req = f"pdevstatus:{self._ext_id}:{secret}:{self._ext_id}"
+            req = f"pdevstatus:{self._gateway_ext_id}:{secret}:{self._sensor_ext_id}"
             response = self._send(encode_request_header(req, body))
             res, _ = decode_response_header(response)
             if res != "OK":

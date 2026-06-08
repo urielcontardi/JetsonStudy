@@ -64,7 +64,12 @@ class ConveyorConfig(BaseModel):
     enabled: bool = False
     host: str = "conveyor.tractian.com"
     port: int = 8080
-    ext_id: str = ""
+    # Gateway virtual compartilhado entre todos os Orwells — deve estar cadastrado no Conveyor.
+    # Usar o mesmo extId do iot-emulator: "000011113333".
+    gateway_ext_id: str = ""
+    # Identificador único do dispositivo — derivado de blake3(eMMC CID) se vazio.
+    # Determina o path no S3: {sensor_ext_id}/samples/... Não precisa de cadastro.
+    sensor_ext_id: str = ""
     upload_interval_s: int = 30
     status_interval_s: int = 300
 

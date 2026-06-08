@@ -42,10 +42,11 @@ preview:
   rtsp_base_url: rtsp://preview:8554
 
 conveyor:
-  enabled: false            # true após cadastrar o device no Conveyor
+  enabled: false            # true quando pronto para enviar eventos
   host: conveyor.tractian.com
   port: 8080
-  # ext_id: ""              # deixar vazio = auto-derivado de blake3(eMMC CID)
-  #                         # rodar deploy/85-conveyor-register.sh para obter o valor
+  gateway_ext_id: "000011113333"   # gateway virtual compartilhado (mesmo do iot-emulator)
+  # sensor_ext_id: ""              # deixar vazio = auto-derivado de blake3(eMMC CID)
+  #                                # ver deploy/85-conveyor-register.sh
   upload_interval_s: 30
   status_interval_s: 300

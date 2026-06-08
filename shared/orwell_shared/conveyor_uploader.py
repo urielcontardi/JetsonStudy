@@ -31,11 +31,11 @@ class ConveyorUploader:
     def __init__(
         self,
         client: ConveyorClient,
-        ext_id: str,
+        sensor_ext_id: str,
         hardware_id: str = "orwell-nx-v1",
     ) -> None:
         self._client = client
-        self._ext_id = ext_id
+        self._sensor_ext_id = sensor_ext_id
         self._hardware_id = hardware_id
 
     def upload(self, event_id: str, clip_path: Path, metadata: dict) -> str:
@@ -48,7 +48,7 @@ class ConveyorUploader:
         ts.seconds = int(t_evento)
 
         pkg = Package()
-        pkg.device_id = self._ext_id.encode()
+        pkg.device_id = self._sensor_ext_id.encode()
         pkg.hardware_id = self._hardware_id.encode()
         pkg.data_id = uuid.UUID(event_id).bytes if _is_uuid(event_id) else event_id.encode()
         pkg.format = "orwell.video-clip.v1"
@@ -73,14 +73,14 @@ class ConveyorUploader:
         pkg.data = buf0 + buf1
 
         self._client.send_dev_sample(pkg.SerializeToString())
-        return f"conveyor://{self._ext_id}/samples/{event_id}"
+        return f"conveyor://{self._sensor_ext_id}/samples/{event_id}"
 
     def upload_status(self, metrics: dict) -> None:
         ts = Timestamp()
         ts.seconds = int(time.time())
 
         pkg = Package()
-        pkg.device_id = self._ext_id.encode()
+        pkg.device_id = self._sensor_ext_id.encode()
         pkg.hardware_id = self._hardware_id.encode()
         pkg.data_id = uuid.uuid4().bytes
         pkg.format = "orwell.status.v1"

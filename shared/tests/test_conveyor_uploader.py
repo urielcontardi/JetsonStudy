@@ -17,7 +17,7 @@ def _make_clip_dir(tmp_path: Path) -> Path:
 
 def test_upload_calls_send_dev_sample(tmp_path):
     mock_client = MagicMock()
-    uploader = ConveyorUploader(mock_client, ext_id="aabbccddee00")
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
     clip_dir = _make_clip_dir(tmp_path)
 
     uploader.upload(
@@ -40,7 +40,7 @@ def test_upload_concatenates_clip_files(tmp_path):
     mock_client = MagicMock()
     mock_client.send_dev_sample.side_effect = lambda b: sent_bytes.append(b)
 
-    uploader = ConveyorUploader(mock_client, ext_id="aabbccddee00")
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
     clip_dir = _make_clip_dir(tmp_path)
 
     uploader.upload("evt-123", clip_dir, {
@@ -59,7 +59,7 @@ def test_upload_package_format(tmp_path):
     mock_client = MagicMock()
     mock_client.send_dev_sample.side_effect = lambda b: sent_bytes.append(b)
 
-    uploader = ConveyorUploader(mock_client, ext_id="aabbccddee00")
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
     clip_dir = _make_clip_dir(tmp_path)
 
     uploader.upload("evt-123", clip_dir, {
@@ -86,7 +86,7 @@ def test_upload_package_format(tmp_path):
 
 def test_upload_returns_uri(tmp_path):
     mock_client = MagicMock()
-    uploader = ConveyorUploader(mock_client, ext_id="aabbccddee00")
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
     clip_dir = _make_clip_dir(tmp_path)
 
     uri = uploader.upload("evt-123", clip_dir, {
@@ -100,7 +100,7 @@ def test_upload_returns_uri(tmp_path):
 
 def test_upload_status_calls_send_dev_status():
     mock_client = MagicMock()
-    uploader = ConveyorUploader(mock_client, ext_id="aabbccddee00")
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
 
     uploader.upload_status({"cpu": 10.5, "memory": 45.2, "disk": 60.0})
 
