@@ -1,0 +1,144 @@
+direction: right
+
+# ── Câmeras ───────────────────────────────────────────────────────────────────
+cam0: "cam0 (GMSL2)" {
+  shape: rectangle
+}
+cam1: "cam1 (GMSL2)" {
+  shape: rectangle
+}
+
+# ── Serviços (Docker Compose) ─────────────────────────────────────────────────
+recorder: recorder {
+  pipeline: GStreamer Pipeline {
+    dvr: "Branch A — DVR\n(nvv4l2h265enc + splitmuxsink)"
+    buf: "Branch C — Event Buffer\n(tmpfs / 60s circular)"
+    ai: "Branch B — AI Inference\n⚠ disabled (ai.enabled: false)" {
+      style.fill: "#fff0f0"
+      style.stroke: "#cc0000"
+    }
+  }
+
+  worker: "UploadWorker\n⚠ disabled (conveyor.enabled: false)" {
+    style.fill: "#fff0f0"
+    style.stroke: "#cc0000"
+    style.stroke-dash: 5
+  }
+}
+
+clipapi: "clip-api\n:8080" {
+  api: "FastAPI\nGET /clips\nGET /events\nGET /events/{id}/clip"
+}
+
+dashboard: "dashboard\n:3000"
+
+preview: "preview (dev only)\nMediaMTX :8554 :8889" {
+  style.stroke-dash: 5
+}
+
+# ── Armazenamento ─────────────────────────────────────────────────────────────
+nvme: "NVMe\n/var/lib/orwell/data\nfMP4 segments" {
+  shape: cylinder
+}
+
+events_dir: "/var/lib/orwell/events\nevent clips (buf-0/1.m4s)" {
+  shape: cylinder
+}
+
+sqlite: "SQLite\nindex.db + events.db" {
+  shape: cylinder
+}
+
+tmpfs: "tmpfs /dev/shm\nbuf-0.m4s / buf-1.m4s\n(circular 2-slot)" {
+  shape: cylinder
+  style.fill: "#fff8f0"
+}
+
+# ── Rede ──────────────────────────────────────────────────────────────────────
+tailscale: "Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54" {
+  shape: oval
+}
+
+# ── Externos ─────────────────────────────────────────────────────────────────
+conveyor: "Conveyor\nconveyor.tractian.com:8080\n(gateway: 000011113333)" {
+  style.fill: "#fff0f0"
+  style.stroke: "#cc0000"
+  style.stroke-dash: 5
+
+  vstp: "VSTP pdevsample / pdevstatus"
+  s3: "S3 — 4cbb47c1331a/samples/..." {
+    shape: cylinder
+  }
+}
+
+omnicluster: "omni-ops\nomnicluster-ctrl-dev" {
+  registerapi: "register-api\nPOST /tailscale-key"
+}
+
+operator: Operador {
+  shape: person
+}
+
+# ── Fluxos — captura ──────────────────────────────────────────────────────────
+cam0 -> recorder.pipeline.dvr: NVMM frames
+cam1 -> recorder.pipeline.dvr: NVMM frames
+cam0 -> recorder.pipeline.buf: NVMM frames
+cam1 -> recorder.pipeline.buf: NVMM frames
+
+recorder.pipeline.dvr -> nvme: fMP4 segments
+recorder.pipeline.dvr -> sqlite: index segments
+recorder.pipeline.buf -> tmpfs: buf-0/1.m4s
+
+# ── Fluxos — AI + eventos (disabled) ─────────────────────────────────────────
+recorder.pipeline.ai -> tmpfs: flush on detect {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+recorder.pipeline.ai -> events_dir: clip {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+recorder.pipeline.ai -> sqlite: add_event() {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+
+# ── Fluxos — upload VSTP (disabled) ──────────────────────────────────────────
+sqlite -> recorder.worker: "pending_uploads()\nuploaded_at IS NULL" {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+events_dir -> recorder.worker: buf-0/1.m4s {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+recorder.worker -> conveyor.vstp: "samples.v2.Package\n(disabled)" {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+conveyor.vstp -> conveyor.s3: ".bin" {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+
+# ── Fluxos — clip-api ─────────────────────────────────────────────────────────
+nvme -> clipapi.api: "ffmpeg -c copy"
+sqlite -> clipapi.api: query
+events_dir -> clipapi.api: "GET /events"
+
+dashboard -> clipapi.api: REST
+cam0 -> preview: RTSP {
+  style.stroke-dash: 5
+}
+
+# ── Acesso remoto ─────────────────────────────────────────────────────────────
+operator -> tailscale: "Tailscale VPN"
+tailscale -> clipapi: ":8080"
+tailscale -> dashboard: ":3000"
+tailscale -> preview: ":8554 / :8889" {
+  style.stroke-dash: 5
+}
+
+# ── Provisioning ──────────────────────────────────────────────────────────────
+operator -> omnicluster.registerapi: "provision.sh\ndevice_id=4cbb47c1331a"
+omnicluster.registerapi -> tailscale: "auth_key + hostname"
