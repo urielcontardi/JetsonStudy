@@ -206,6 +206,31 @@
     </div>
   </div>
 
+  <!-- Config Card -->
+  <div class="card" id="config-card">
+    <div class="card-header">Configuração de Upload</div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:1rem;">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input type="checkbox" id="periodic-enabled" style="width:1rem;height:1rem;">
+          <span style="font-size:0.875rem;">Upload periódico ativo</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span style="font-size:0.8rem;color:#94a3b8;">Intervalo (min):</span>
+          <input type="number" id="periodic-interval" min="1" max="1440"
+            style="width:80px;background:#0f1117;border:1px solid #1e2a3a;color:#e2e8f0;padding:0.3rem 0.6rem;border-radius:5px;font-size:0.875rem;">
+        </div>
+        <button class="btn btn-primary" onclick="saveConfig()">Salvar</button>
+        <span id="config-status" style="font-size:0.8rem;color:#64748b;"></span>
+      </div>
+      <div style="display:flex;gap:2rem;font-size:0.8rem;color:#64748b;">
+        <span>Pendentes: <strong id="stat-pending" style="color:#f59e0b;">—</strong></span>
+        <span>Falhas: <strong id="stat-failed" style="color:#ef4444;">—</strong></span>
+        <span>Último envio: <strong id="stat-last" style="color:#10b981;">—</strong></span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -414,6 +439,60 @@ function toInputVal(d) {
 }
 
 init();
+
+async function loadConfig() {
+  try {
+    const [cfgRes, statsRes] = await Promise.all([
+      fetch(`${CLIP_API}/config`),
+      fetch(`${CLIP_API}/upload-stats`)
+    ]);
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json();
+      document.getElementById('periodic-enabled').checked = cfg.periodic_upload_enabled;
+      document.getElementById('periodic-interval').value = Math.round(cfg.periodic_upload_interval_s / 60);
+    }
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      document.getElementById('stat-pending').textContent = stats.pending;
+      document.getElementById('stat-failed').textContent = stats.failed;
+      document.getElementById('stat-last').textContent =
+        stats.last_uploaded_at
+          ? new Date(stats.last_uploaded_at * 1000).toLocaleTimeString('pt-BR')
+          : 'nunca';
+    }
+  } catch (e) { console.warn('loadConfig error', e); }
+}
+
+async function saveConfig() {
+  const enabled = document.getElementById('periodic-enabled').checked;
+  const minutes = parseInt(document.getElementById('periodic-interval').value, 10);
+  const status = document.getElementById('config-status');
+  status.textContent = 'Salvando...';
+  try {
+    const r = await fetch(`${CLIP_API}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        periodic_upload_enabled: enabled,
+        periodic_upload_interval_s: minutes * 60
+      })
+    });
+    if (r.ok) {
+      status.textContent = 'Salvo ✓';
+      status.style.color = '#10b981';
+    } else {
+      status.textContent = `Erro ${r.status}`;
+      status.style.color = '#ef4444';
+    }
+  } catch (e) {
+    status.textContent = 'Falha de rede';
+    status.style.color = '#ef4444';
+  }
+  setTimeout(() => { status.textContent = ''; }, 3000);
+}
+
+loadConfig();
+setInterval(loadConfig, 30000);
 </script>
 </body>
 </html>
