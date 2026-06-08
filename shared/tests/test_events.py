@@ -141,6 +141,10 @@ def test_trigger_type_migration_on_existing_db(tmp_path):
     assert ev is not None
     assert ev.trigger_type == "ai"
 
+    # Verifica que a DB migrada aceita novos eventos
+    idx.add_event(Event(id="e2", camera_id="cam0", t_evento=2.0, label="smoke", confidence=0.9, trigger_type="periodic"))
+    assert idx.get("e2").trigger_type == "periodic"
+
 
 def test_upload_stats_empty(idx):
     stats = idx.upload_stats()

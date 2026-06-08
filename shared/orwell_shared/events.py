@@ -53,8 +53,9 @@ class EventIndex:
         try:
             self._conn.execute(_MIGRATION_ADD_TRIGGER_TYPE)
             self._conn.commit()
-        except sqlite3.OperationalError:
-            pass  # coluna já existe
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
 
     def add_event(self, event: Event) -> None:
         self._conn.execute(
@@ -123,5 +124,5 @@ class EventIndex:
             label=r["label"], confidence=r["confidence"], bbox_json=r["bbox_json"],
             clip_path=r["clip_path"], uploaded_at=r["uploaded_at"],
             created_at=r["created_at"],
-            trigger_type=r["trigger_type"] if "trigger_type" in r.keys() else "ai",
+            trigger_type=r["trigger_type"],
         )
