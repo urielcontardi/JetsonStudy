@@ -97,6 +97,10 @@ cameras -> jetson.preview: "stream ao vivo" {
   style.stroke-dash: 5
   style.stroke: "#adb5bd"
 }
+jetson.preview -> tailscale: ":8554 · :8889" {
+  style.stroke-dash: 5
+  style.stroke: "#adb5bd"
+}
 operator -> registerapi: provision.sh {
   style.stroke-dash: 5
   style.stroke: "#7048e8"
