@@ -96,7 +96,7 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
             f"nvinfer config-file-path={ai_cfg.model_path} name=ai_infer "
         )
 
-    preview_chain = preview_branch(preview_cfg, camera.id)
+    preview_chain = preview_branch(preview_cfg, camera.id, profile)
     if preview_chain:
         desc += f"t. ! queue ! {preview_chain} "
 

@@ -100,7 +100,22 @@ def test_preview_branch_disabled_is_empty():
 
 def test_preview_branch_enabled_pushes_rtsp():
     branch = preview_branch(
-        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"), camera_id="0")
+        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"),
+        camera_id="0",
+        profile=CaptureProfile(encoder="hw"),
+    )
+    assert "rtspclientsink" in branch
+    assert "nvv4l2h264enc" in branch
+    assert "protocols=tcp" in branch
+
+
+def test_preview_branch_enabled_sw_encoder():
+    branch = preview_branch(
+        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"),
+        camera_id="1",
+        profile=CaptureProfile(encoder="sw", codec="h264"),
+    )
+    assert "x264enc" in branch
     assert "rtspclientsink" in branch
 
 

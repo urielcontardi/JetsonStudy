@@ -73,16 +73,31 @@ def inference_stage(ai: AIConfig, num_cameras: int) -> str:
     )
 
 
-def preview_branch(preview: PreviewConfig, camera_id: str) -> str:
-    """Branch opcional do tee enviando o stream JÁ CODIFICADO para o MediaMTX (RTSP).
+def preview_branch(preview: PreviewConfig, camera_id: str, profile: CaptureProfile | None = None) -> str:
+    """Branch opcional do tee para o MediaMTX (RTSP).
 
-    Desligado (preview.enabled=False) → string vazia (tee tem só o consumidor de
-    gravação, custo desprezível). Ligado → empurra para rtsp://.../cam<id>.
+    O tee emite frames NVMM brutos, portanto esta branch precisa encodar antes de
+    entregar ao rtspclientsink. Usa H264 (2 Mbps) para máxima compatibilidade com
+    clientes RTSP. protocols=tcp evita problemas de NAT/firewall em containers.
     """
     if not preview.enabled:
         return ""
     url = f"{preview.rtsp_base_url.rstrip('/')}/cam{camera_id}"
-    return f"rtspclientsink location={url}"
+    if profile is not None and profile.encoder == "hw":
+        kf = max(1, round(profile.gop_seconds * profile.fps))
+        encode = (
+            f"nvvideoconvert ! "
+            f"nvv4l2h264enc bitrate=2000000 iframeinterval={kf} ! h264parse ! "
+        )
+    elif profile is not None:
+        kf = max(1, round(profile.gop_seconds * profile.fps))
+        encode = (
+            f"nvvideoconvert ! video/x-raw,format=I420 ! "
+            f"x264enc speed-preset=ultrafast tune=zerolatency bitrate=2000 key-int-max={kf} ! h264parse ! "
+        )
+    else:
+        encode = ""
+    return f"{encode}rtspclientsink location={url} protocols=tcp"
 
 
 def max_size_time_ns(profile: CaptureProfile) -> int:
