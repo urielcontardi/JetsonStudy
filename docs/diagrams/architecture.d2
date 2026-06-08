@@ -1,136 +1,110 @@
 direction: right
 
-# ── Câmeras ───────────────────────────────────────────────────────────────────
-cam0: cam0\n(GMSL2) { shape: rectangle }
-cam1: cam1\n(GMSL2) { shape: rectangle }
+jetson: Jetson Orin NX {
+  style.fill: "#f8f9fa"
+  style.stroke: "#343a40"
 
-# ── Serviços ──────────────────────────────────────────────────────────────────
-recorder: recorder (Docker) {
-  pipeline: GStreamer Pipeline {
-    dvr: Branch A\nDVR encode\nnvv4l2h265enc
-    buf: Branch C\nEvent Buffer\ntmpfs circular 60s
-    ai: "Branch B — AI Inference\n⚠ DISABLED (ai.enabled: false)" {
-      style.fill: "#ffecec"
-      style.stroke: "#e74c3c"
+  cameras: Câmeras ZED X One S {
+    style.fill: "#e9ecef"
+    cam0: cam0 GMSL2
+    cam1: cam1 GMSL2
+  }
+
+  recorder: recorder {
+    style.fill: "#dbe4ff"
+    style.stroke: "#4263eb"
+
+    pipeline: GStreamer Pipeline {
+      style.fill: "#edf2ff"
+      dvr: "Branch A — DVR\nnvv4l2h265enc → NVMe"
+      buf: "Branch C — Event Buffer\ntmpfs circular 60s"
+      ai: "Branch B — AI Inference\n⚠ disabled" {
+        style.fill: "#fff0f0"
+        style.stroke: "#e03131"
+      }
+    }
+
+    worker: "UploadWorker  ⚠ disabled" {
+      style.fill: "#fff0f0"
+      style.stroke: "#e03131"
+      style.stroke-dash: 5
     }
   }
-  worker: "UploadWorker\n⚠ DISABLED (conveyor.enabled: false)" {
-    style.fill: "#ffecec"
-    style.stroke: "#e74c3c"
-    style.stroke-dash: 5
+
+  clipapi: "clip-api  :8080" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  dashboard: "dashboard  :3000" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  storage: Armazenamento {
+    style.fill: "#e9ecef"
+    nvme: "NVMe — DVR segments" { shape: cylinder }
+    events: "events — clips pós-IA" { shape: cylinder }
+    sqlite: "SQLite — index + events" { shape: cylinder }
+    tmpfs: "tmpfs — event buffer" { shape: cylinder; style.fill: "#fff8e1" }
   }
 }
 
-clipapi: "clip-api :8080" {
-  style.fill: "#e8f4f8"
-  endpoints: "GET /clips\nGET /events\nGET /events/{id}/clip"
-}
-
-dashboard: "dashboard :3000" {
-  style.fill: "#e8f4f8"
-}
-
-preview: "preview (dev)\nMediaMTX :8554 :8889" {
-  style.fill: "#f0f0f0"
+conveyor: "Conveyor  ⚠ disabled" {
+  style.fill: "#fff0f0"
+  style.stroke: "#e03131"
   style.stroke-dash: 5
+  vstp: "VSTP pdevsample\ngw: 000011113333"
+  s3: "S3  4cbb47c1331a/..." { shape: cylinder }
 }
 
-# ── Armazenamento ─────────────────────────────────────────────────────────────
-nvme: "NVMe\n/var/lib/orwell/data\nfMP4 segments" {
-  shape: cylinder
-  style.fill: "#eaf7ea"
-}
-events_dir: "/var/lib/orwell/events\nevent clips" {
-  shape: cylinder
-  style.fill: "#eaf7ea"
-}
-sqlite: "SQLite\nindex.db + events.db" {
-  shape: cylinder
-  style.fill: "#eaf7ea"
-}
-tmpfs: "tmpfs /dev/shm\nbuf-0.m4s / buf-1.m4s" {
-  shape: cylinder
-  style.fill: "#fff8e1"
-}
-
-# ── Rede / Infra ──────────────────────────────────────────────────────────────
-tailscale: "Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54" {
-  shape: oval
-  style.fill: "#e8f0fe"
-  style.stroke: "#4285f4"
-}
-
-conveyor: "Conveyor\nconveyor.tractian.com:8080" {
-  style.fill: "#ffecec"
-  style.stroke: "#e74c3c"
-  style.stroke-dash: 5
-
-  vstp: "VSTP\npdevsample / pdevstatus\ngw: 000011113333"
-  s3: "S3\n4cbb47c1331a/samples/..." { shape: cylinder }
-}
-
-omnicluster: "omni-ops\nomnicluster-ctrl-dev" {
-  style.fill: "#f0f7ee"
-  registerapi: "register-api\nPOST /tailscale-key"
+infra: Infra {
+  style.fill: "#f8f9fa"
+  tailscale: "Tailscale\nomnitrac-4cbb47c1331a" { shape: oval; style.fill: "#e7f5ff"; style.stroke: "#1971c2" }
+  registerapi: "omni-ops\nregister-api" { style.fill: "#ebfbee"; style.stroke: "#2f9e44" }
 }
 
 operator: Operador { shape: person }
 
-# ── Conexões — captura ────────────────────────────────────────────────────────
-cam0 -> recorder.pipeline.dvr: NVMM frames
-cam1 -> recorder.pipeline.dvr: NVMM frames
-cam0 -> recorder.pipeline.buf: NVMM frames
-cam1 -> recorder.pipeline.buf: NVMM frames
+# ── câmeras → pipeline ────────────────────────────────────────────────────────
+jetson.cameras -> jetson.recorder.pipeline: NVMM frames
 
-recorder.pipeline.dvr -> nvme: fMP4 segments
-recorder.pipeline.dvr -> sqlite: index
-recorder.pipeline.buf -> tmpfs: buf-0/1.m4s
+# ── pipeline → storage ────────────────────────────────────────────────────────
+jetson.recorder.pipeline.dvr -> jetson.storage.nvme
+jetson.recorder.pipeline.dvr -> jetson.storage.sqlite: index
+jetson.recorder.pipeline.buf -> jetson.storage.tmpfs
 
-# ── Conexões — AI / eventos (DISABLED) ───────────────────────────────────────
-recorder.pipeline.ai -> tmpfs: flush on detect {
-  style.stroke: "#e74c3c"
+# ── AI → eventos (disabled) ──────────────────────────────────────────────────
+jetson.recorder.pipeline.ai -> jetson.storage.events: flush clip {
+  style.stroke: "#e03131"
   style.stroke-dash: 5
 }
-recorder.pipeline.ai -> events_dir: clip {
-  style.stroke: "#e74c3c"
-  style.stroke-dash: 5
-}
-recorder.pipeline.ai -> sqlite: add_event() {
-  style.stroke: "#e74c3c"
+jetson.recorder.pipeline.ai -> jetson.storage.sqlite: add_event() {
+  style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
-# ── Conexões — upload VSTP (DISABLED) ────────────────────────────────────────
-sqlite -> recorder.worker: "pending_uploads()" {
-  style.stroke: "#e74c3c"
-  style.stroke-dash: 5
-}
-events_dir -> recorder.worker: buf-0/1.m4s {
-  style.stroke: "#e74c3c"
-  style.stroke-dash: 5
-}
-recorder.worker -> conveyor.vstp: "samples.v2.Package" {
-  style.stroke: "#e74c3c"
+# ── worker → Conveyor (disabled) ─────────────────────────────────────────────
+jetson.recorder.worker -> conveyor.vstp: samples.v2.Package {
+  style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 conveyor.vstp -> conveyor.s3 {
-  style.stroke: "#e74c3c"
+  style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
-# ── Conexões — clip-api ───────────────────────────────────────────────────────
-nvme -> clipapi.endpoints: "ffmpeg -c copy"
-sqlite -> clipapi.endpoints: query
-events_dir -> clipapi.endpoints: GET /events
-dashboard -> clipapi: REST
+# ── clip-api ──────────────────────────────────────────────────────────────────
+jetson.storage.nvme -> jetson.clipapi: ffmpeg -c copy
+jetson.storage.sqlite -> jetson.clipapi: query
+jetson.storage.events -> jetson.clipapi
+jetson.dashboard -> jetson.clipapi: REST
 
-cam0 -> preview: RTSP { style.stroke-dash: 5 }
+# ── acesso remoto ─────────────────────────────────────────────────────────────
+operator -> infra.tailscale
+infra.tailscale -> jetson.clipapi: :8080
+infra.tailscale -> jetson.dashboard: :3000
 
-# ── Conexões — acesso remoto ──────────────────────────────────────────────────
-operator -> tailscale: Tailscale VPN
-tailscale -> clipapi: :8080
-tailscale -> dashboard: :3000
-
-# ── Conexões — provisioning ───────────────────────────────────────────────────
-operator -> omnicluster.registerapi: "provision.sh\ndevice_id=4cbb47c1331a"
-omnicluster.registerapi -> tailscale: auth_key + hostname
+# ── provisioning ──────────────────────────────────────────────────────────────
+operator -> infra.registerapi: "provision.sh"
+infra.registerapi -> infra.tailscale: auth_key
