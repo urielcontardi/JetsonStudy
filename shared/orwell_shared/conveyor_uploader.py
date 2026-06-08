@@ -54,7 +54,12 @@ class ConveyorUploader:
         pkg.format = "orwell.video-clip.v1"
         pkg.started_at.CopyFrom(ts)
         pkg.duration_us = 10_000_000
-        pkg.trigger_type = TriggerType.Value("TRIGGER_TYPE_EVENT")
+        raw_trigger = metadata.get("trigger_type", "ai")
+        pkg.trigger_type = (
+            TriggerType.Value("TRIGGER_TYPE_PERIODIC")
+            if raw_trigger == "periodic"
+            else TriggerType.Value("TRIGGER_TYPE_EVENT")
+        )
 
         camera_id = metadata.get("camera_id", "cam0")
         camera_index = int(camera_id.replace("cam", "")) if camera_id.startswith("cam") else 0

@@ -111,3 +111,35 @@ def test_upload_status_calls_send_dev_status():
     assert pkg.format == "orwell.status.v1"
     data = json.loads(pkg.data.decode())
     assert data["cpu"] == 10.5
+
+
+def test_upload_periodic_uses_trigger_type_periodic(tmp_path):
+    from unittest.mock import MagicMock
+    from orwell_shared.conveyor_uploader import ConveyorUploader
+    from orwell_shared.samples_pb2 import Package, TriggerType
+
+    clip_dir = tmp_path / "events" / "evt-p"
+    clip_dir.mkdir(parents=True)
+    (clip_dir / "buf-0.m4s").write_bytes(b"A")
+    (clip_dir / "buf-1.m4s").write_bytes(b"B")
+
+    mock_client = MagicMock()
+    uploader = ConveyorUploader(client=mock_client, sensor_ext_id="test-sensor")
+
+    uploader.upload(
+        event_id="12345678-1234-5678-1234-567812345678",
+        clip_path=clip_dir,
+        metadata={
+            "camera_id": "cam0",
+            "label": "periodic",
+            "confidence": 1.0,
+            "bbox": None,
+            "t_evento": 1000.0,
+            "trigger_type": "periodic",
+        },
+    )
+
+    assert mock_client.send_dev_sample.called
+    pkg = Package()
+    pkg.ParseFromString(mock_client.send_dev_sample.call_args[0][0])
+    assert pkg.trigger_type == TriggerType.Value("TRIGGER_TYPE_PERIODIC")

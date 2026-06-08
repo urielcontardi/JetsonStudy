@@ -74,6 +74,7 @@ class UploadWorker:
                         "confidence": event.confidence,
                         "bbox": event.bbox_json,
                         "t_evento": event.t_evento,
+                        "trigger_type": event.trigger_type,
                     },
                 )
                 self._index.mark_uploaded(event.id)
