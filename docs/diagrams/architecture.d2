@@ -1,147 +1,143 @@
 direction: right
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HARDWARE
+# Coluna 1 — Entrada
 # ─────────────────────────────────────────────────────────────────────────────
-
-cameras: "Câmeras\nZED X One S × 2" {
-  shape: rectangle
+cameras: "📷 Câmeras\nZED X One S × 2\n\nGMSL2 (coaxial)\nDriver kernel no host" {
   style.fill: "#f1f3f5"
   style.stroke: "#868e96"
-  label: "Câmeras\nZED X One S × 2\n\nConexão GMSL2 (cabo coaxial)\nDriver kernel no host"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JETSON ORIN NX
+# Coluna 2 — Processamento (Jetson)
 # ─────────────────────────────────────────────────────────────────────────────
-
 jetson: Jetson Orin NX {
   style.fill: "#f8f9fa"
-  style.stroke: "#495057"
-  style.border-radius: 8
+  style.stroke: "#343a40"
 
-  # ── Docker container 1 ─────────────────────────────────────────────────────
-  recorder: "🐳  recorder" {
+  recorder: "🐳 recorder\n\nGrava câmeras em fMP4 no NVMe (DVR).\nMantém buffer circular no tmpfs.\nRoda IA quando habilitado." {
     style.fill: "#e7f5ff"
     style.stroke: "#1971c2"
-    style.border-radius: 6
-    label: "🐳  recorder\n\nCaptura vídeo das câmeras via GStreamer.\nGrava continuamente em segmentos fMP4 no NVMe (DVR).\nMantém buffer circular no tmpfs para clips de eventos.\nRoda inferência de IA quando habilitado."
   }
 
-  # ── Docker container 2 ─────────────────────────────────────────────────────
-  clipapi: "🐳  clip-api  :8080" {
-    style.fill: "#ebfbee"
-    style.stroke: "#2f9e44"
-    style.border-radius: 6
-    label: "🐳  clip-api  :8080\n\nAPI REST para acesso remoto ao vídeo gravado.\nGET /clips  →  retorna MP4 sem recomprimir\nGET /events →  lista eventos de IA detectados\nGET /events/{id}/clip  →  clip do evento"
-  }
-
-  # ── Docker container 3 ─────────────────────────────────────────────────────
-  dashboard: "🐳  dashboard  :3000" {
-    style.fill: "#ebfbee"
-    style.stroke: "#2f9e44"
-    style.border-radius: 6
-    label: "🐳  dashboard  :3000\n\nInterface web para visualizar\nclips gravados e eventos detectados.\nConsome a clip-api."
-  }
-
-  # ── Docker container 4 — dev only ──────────────────────────────────────────
-  preview: "🐳  preview  (dev only)" {
-    style.fill: "#f8f9fa"
-    style.stroke: "#adb5bd"
-    style.stroke-dash: 5
-    style.border-radius: 6
-    label: "🐳  preview  (dev only)\n\nStream ao vivo das câmeras via RTSP e WebRTC.\nUsado durante desenvolvimento para monitorar\na imagem em tempo real sem gravar nada.\nNão sobe em produção."
-  }
-
-  # ── Storage (host) ─────────────────────────────────────────────────────────
-  storage: "Storage  (volumes do host)" {
-    style.fill: "#f1f3f5"
-    style.stroke: "#868e96"
-    style.border-radius: 6
-    nvme: "NVMe\nDVR segments\n(fMP4, ~20 dias)" { shape: cylinder; style.fill: "#ffffff" }
-    events: "events\nClips de eventos\n(pós-detecção IA)" { shape: cylinder; style.fill: "#ffffff" }
-    sqlite: "SQLite\nÍndice de segmentos\n+ registro de eventos" { shape: cylinder; style.fill: "#ffffff" }
-    tmpfs: "tmpfs\nBuffer circular 60s\n(pré-detecção IA)" { shape: cylinder; style.fill: "#fff9db" }
-  }
-
-  # ── Worker VSTP (disabled) ─────────────────────────────────────────────────
-  worker: "UploadWorker  ⚠ disabled" {
+  ai_note: "🐳 recorder — Branch AI\n⚠ ai.enabled: false\n\nDetecta objetos via TensorRT.\nFlush do buffer → events/" {
     style.fill: "#fff5f5"
     style.stroke: "#e03131"
     style.stroke-dash: 5
-    style.border-radius: 6
-    label: "UploadWorker  ⚠ disabled\n\nPoll SQLite por eventos pendentes.\nEmpacota clips como samples.v2.Package\ne envia ao Conveyor via VSTP.\nAtiva com conveyor.enabled: true"
+  }
+
+  preview: "🐳 preview\nDEV ONLY\n\nStream ao vivo via RTSP / WebRTC.\nPara monitorar câmeras durante dev.\nNão sobe em produção." {
+    style.fill: "#f8f9fa"
+    style.stroke: "#adb5bd"
+    style.stroke-dash: 5
   }
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CLOUD / INFRA
+# Coluna 3 — Storage (host volumes)
 # ─────────────────────────────────────────────────────────────────────────────
+storage: "💾 Storage — volumes do host" {
+  style.fill: "#f1f3f5"
+  style.stroke: "#868e96"
 
-conveyor: "Conveyor  ⚠ disabled" {
-  style.fill: "#fff5f5"
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-  style.border-radius: 6
-  label: "Conveyor\nconveyor.tractian.com:8080\n\nBackend Tractian.\nRecebe samples via VSTP e\narmazena no S3 em:\n4cbb47c1331a/samples/..."
+  nvme: "NVMe\nDVR segments\nfMP4 · ~20 dias" { shape: cylinder; style.fill: "#ffffff" }
+  tmpfs: "tmpfs\nbuf-0/1.m4s\nbuffer 60s" { shape: cylinder; style.fill: "#fff9db" }
+  sqlite: "SQLite\nindex + events" { shape: cylinder; style.fill: "#ffffff" }
+  events: "events/\nclips de IA" { shape: cylinder; style.fill: "#fff5f5"; style.stroke: "#e03131" }
 }
 
-tailscale: "Tailscale" {
+# ─────────────────────────────────────────────────────────────────────────────
+# Coluna 4 — APIs (Jetson Docker)
+# ─────────────────────────────────────────────────────────────────────────────
+apis: "APIs — Docker" {
+  style.fill: "#ebfbee"
+  style.stroke: "#2f9e44"
+
+  clipapi: "🐳 clip-api :8080\n\nGET /clips\nGET /events\nGET /events/{id}/clip" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  dashboard: "🐳 dashboard :3000\n\nInterface web para\nvisualizar clips e eventos." {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  worker: "UploadWorker\n⚠ disabled\n\nPoll events pendentes → empacota\nsamples.v2.Package → VSTP." {
+    style.fill: "#fff5f5"
+    style.stroke: "#e03131"
+    style.stroke-dash: 5
+  }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Coluna 5 — Acesso remoto / Cloud
+# ─────────────────────────────────────────────────────────────────────────────
+tailscale: "🔒 Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54\n\nTodo acesso remoto\npassa por aqui." {
   shape: oval
   style.fill: "#e7f5ff"
   style.stroke: "#1971c2"
-  label: "Tailscale\nomnitrac-4cbb47c1331a\n100.109.171.54\n\nVPN mesh. Todo acesso\nremoto passa por aqui."
 }
 
-operator: "Operador /\nTime Tractian" {
-  shape: person
+conveyor: "☁ Conveyor\n⚠ disabled\n\nconveyor.tractian.com:8080\nRecebe VSTP → salva em S3:\n4cbb47c1331a/samples/..." {
+  style.fill: "#fff5f5"
+  style.stroke: "#e03131"
+  style.stroke-dash: 5
+}
+
+operator: "👤 Operador\nTime Tractian" { shape: person }
+registerapi: "omni-ops\nregister-api\n\nprovision.sh → gera\nauth_key Tailscale" {
+  style.fill: "#f3f0ff"
+  style.stroke: "#7048e8"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONEXÕES
 # ─────────────────────────────────────────────────────────────────────────────
 
-# captura
+# câmeras → recorder / preview
 cameras -> jetson.recorder: GMSL2 via Argus
+cameras -> jetson.preview: stream ao vivo { style.stroke-dash: 5; style.stroke: "#adb5bd" }
 
-# recorder → storage
-jetson.recorder -> jetson.storage.nvme: grava segmentos
-jetson.recorder -> jetson.storage.tmpfs: event buffer circular
-jetson.recorder -> jetson.storage.sqlite: indexa segmentos
+# recorder → storage (fluxo principal)
+jetson.recorder -> storage.nvme: grava fMP4
+jetson.recorder -> storage.tmpfs: buffer circular
+jetson.recorder -> storage.sqlite: indexa
 
-# evento IA (disabled)
-jetson.recorder -> jetson.storage.events: "flush clip ao detectar\n⚠ ai.enabled: false" {
+# AI → events (disabled)
+jetson.ai_note -> storage.events: flush clip {
+  style.stroke: "#e03131"
+  style.stroke-dash: 5
+}
+jetson.ai_note -> storage.sqlite: add_event() {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
-# upload (disabled)
-jetson.storage.events -> jetson.worker {
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-}
-jetson.worker -> conveyor: VSTP pdevsample {
+# storage → APIs
+storage.nvme -> apis.clipapi: ffmpeg -c copy
+storage.events -> apis.clipapi: serve clips
+storage.sqlite -> apis.clipapi: query
+storage.events -> apis.worker: pending uploads {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
-# api
-jetson.storage.nvme -> jetson.clipapi: serve clips
-jetson.storage.sqlite -> jetson.clipapi: query
-jetson.storage.events -> jetson.clipapi: serve event clips
-jetson.dashboard -> jetson.clipapi: REST
+# dashboard → clip-api
+apis.dashboard -> apis.clipapi: REST
 
-# preview dev
-cameras -> jetson.preview: stream ao vivo {
+# upload VSTP (disabled)
+apis.worker -> conveyor: VSTP pdevsample {
+  style.stroke: "#e03131"
   style.stroke-dash: 5
-  style.stroke: "#adb5bd"
 }
 
 # acesso remoto
+tailscale -> apis.clipapi: :8080
+tailscale -> apis.dashboard: :3000
+tailscale -> jetson.preview: :8554 / :8889 { style.stroke-dash: 5; style.stroke: "#adb5bd" }
 operator -> tailscale: VPN
-tailscale -> jetson.clipapi: :8080
-tailscale -> jetson.dashboard: :3000
-tailscale -> jetson.preview: ":8554 (RTSP)\n:8889 (WebRTC)" {
-  style.stroke-dash: 5
-  style.stroke: "#adb5bd"
-}
+
+# provisioning
+operator -> registerapi: provision.sh
+registerapi -> tailscale: auth_key + hostname
