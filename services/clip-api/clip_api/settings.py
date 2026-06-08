@@ -13,3 +13,7 @@ def data_dir() -> str:
 
 def events_dir() -> str:
     return os.environ.get("ORWELL_EVENTS_DIR", "/var/lib/orwell/events")
+
+
+def config_path() -> str:
+    return os.environ.get("ORWELL_CONFIG", "/app/config/orwell.yaml")

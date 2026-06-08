@@ -3,10 +3,13 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+import yaml
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from orwell_shared.clips import NoSegments, extract_clip, extract_event_clip
 from orwell_shared.events import EventIndex
@@ -17,6 +20,11 @@ from .settings import data_dir, events_dir, index_db_path
 
 def _to_epoch(value: str) -> float:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+
+
+class ConfigPatch(BaseModel):
+    periodic_upload_enabled: bool | None = None
+    periodic_upload_interval_s: int | None = Field(None, ge=60, le=86400)
 
 
 def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> FastAPI:
@@ -101,6 +109,38 @@ def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> 
         except NoSegments:
             raise HTTPException(status_code=404, detail="clip files not found")
         return FileResponse(str(out), media_type="video/mp4", filename=f"event-{event_id}.mp4")
+
+    from clip_api.settings import config_path as _config_path
+
+    @app.get("/config")
+    def get_config():
+        from orwell_shared.config import load_config
+        cfg = load_config(_config_path())
+        return {
+            "periodic_upload_enabled": cfg.conveyor.periodic_upload_enabled,
+            "periodic_upload_interval_s": cfg.conveyor.periodic_upload_interval_s,
+        }
+
+    @app.patch("/config")
+    def patch_config(body: ConfigPatch = Body(...)):
+        cfg_path = Path(_config_path())
+        raw: dict[str, Any] = yaml.safe_load(cfg_path.read_text()) or {}
+        conv = raw.setdefault("conveyor", {})
+        if body.periodic_upload_enabled is not None:
+            conv["periodic_upload_enabled"] = body.periodic_upload_enabled
+        if body.periodic_upload_interval_s is not None:
+            conv["periodic_upload_interval_s"] = body.periodic_upload_interval_s
+        cfg_path.write_text(yaml.dump(raw))
+        from orwell_shared.config import load_config
+        cfg = load_config(cfg_path)
+        return {
+            "periodic_upload_enabled": cfg.conveyor.periodic_upload_enabled,
+            "periodic_upload_interval_s": cfg.conveyor.periodic_upload_interval_s,
+        }
+
+    @app.get("/upload-stats")
+    def upload_stats():
+        return event_index.upload_stats()
 
     return app
 
