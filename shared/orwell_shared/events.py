@@ -82,6 +82,13 @@ class EventIndex:
         ).fetchone()
         return self._row(row) if row else None
 
+    def query_all(self, start: float, end: float) -> list[Event]:
+        rows = self._conn.execute(
+            "SELECT * FROM events WHERE t_evento>=? AND t_evento<=? ORDER BY t_evento",
+            (start, end),
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
     def pending_uploads(self) -> list[Event]:
         rows = self._conn.execute(
             "SELECT * FROM events WHERE uploaded_at IS NULL ORDER BY t_evento"

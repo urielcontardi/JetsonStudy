@@ -110,6 +110,36 @@ def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> 
             raise HTTPException(status_code=404, detail="clip files not found")
         return FileResponse(str(out), media_type="video/mp4", filename=f"event-{event_id}.mp4")
 
+    @app.get("/orwell/events/{sensor_id}")
+    def orwell_events(sensor_id: str, start: str = Query(...), end: str = Query(...)):
+        s, e = _to_epoch(start), _to_epoch(end)
+        evts = event_index.query_all(s, e)
+        return {
+            "events": [
+                {
+                    "id": ev.id,
+                    "camera_id": ev.camera_id,
+                    "t_evento": ev.t_evento,
+                    "label": ev.label,
+                    "confidence": ev.confidence,
+                    "clip_available": ev.clip_path is not None,
+                }
+                for ev in evts
+            ]
+        }
+
+    @app.get("/orwell/clip/{sensor_id}/{event_id}")
+    def orwell_clip(sensor_id: str, event_id: str):
+        ev = event_index.get(event_id)
+        if ev is None or ev.clip_path is None:
+            raise HTTPException(status_code=404, detail="clip not found")
+        out = Path(tempfile.gettempdir()) / f"orwell-{event_id}.mp4"
+        try:
+            extract_event_fn(Path(ev.clip_path), out)
+        except NoSegments:
+            raise HTTPException(status_code=404, detail="clip files not found")
+        return FileResponse(str(out), media_type="video/mp4", filename=f"clip-{event_id}.mp4")
+
     from clip_api.settings import config_path as _config_path
 
     @app.get("/config")
