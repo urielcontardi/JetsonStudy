@@ -99,3 +99,26 @@ def test_orwell_config_has_event_buffer():
     cfg = OrwellConfig()
     assert hasattr(cfg, "event_buffer")
     assert cfg.event_buffer.buffer_seconds == 60
+
+
+def test_conveyor_config_defaults_periodic():
+    from orwell_shared.config import ConveyorConfig
+    cfg = ConveyorConfig()
+    assert cfg.periodic_upload_enabled is True
+    assert cfg.periodic_upload_interval_s == 600
+
+
+def test_conveyor_config_periodic_from_yaml(tmp_path):
+    import yaml
+    from orwell_shared.config import load_config
+    cfg_file = tmp_path / "orwell.yaml"
+    cfg_file.write_text(yaml.dump({
+        "conveyor": {
+            "enabled": True,
+            "periodic_upload_enabled": False,
+            "periodic_upload_interval_s": 300,
+        }
+    }))
+    cfg = load_config(cfg_file)
+    assert cfg.conveyor.periodic_upload_enabled is False
+    assert cfg.conveyor.periodic_upload_interval_s == 300

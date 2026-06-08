@@ -72,6 +72,8 @@ class ConveyorConfig(BaseModel):
     sensor_ext_id: str = ""
     upload_interval_s: int = 30
     status_interval_s: int = 300
+    periodic_upload_enabled: bool = True
+    periodic_upload_interval_s: int = 600
 
 
 class OrwellConfig(BaseModel):
