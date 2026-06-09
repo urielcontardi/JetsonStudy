@@ -3,495 +3,998 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Orwell Dashboard</title>
+<meta name="color-scheme" content="light">
+<title>Orwell | Operations Portal</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
-  header { padding: 1.5rem 2rem; border-bottom: 1px solid #1e2a3a; display: flex; align-items: center; gap: 1rem; }
-  header h1 { font-size: 1.25rem; font-weight: 600; color: #38bdf8; }
-  header span { font-size: 0.8rem; color: #64748b; }
-  .container { max-width: 960px; margin: 0 auto; padding: 2rem; display: flex; flex-direction: column; gap: 2rem; }
-  .card { background: #1a2030; border: 1px solid #1e2a3a; border-radius: 10px; overflow: hidden; }
-  .card-header { padding: 1rem 1.5rem; border-bottom: 1px solid #1e2a3a; font-weight: 600; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-  .card-body { padding: 1.5rem; }
-
-  /* Docs */
-  .route { padding: 0.75rem 0; border-bottom: 1px solid #1e2a3a; }
-  .route:last-child { border-bottom: none; }
-  .route-top { display: flex; align-items: center; gap: 0.75rem; }
-  .method { background: #10b981; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; font-family: monospace; flex-shrink: 0; }
-  .route-path { font-family: monospace; font-size: 0.875rem; color: #e2e8f0; flex: 1; }
-  .route-desc { font-size: 0.8rem; color: #64748b; margin: 0.25rem 0 0.5rem 2.5rem; }
-  .route-form { margin-left: 2.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-  .route-input { background: #0f1117; border: 1px solid #1e2a3a; color: #e2e8f0; padding: 0.3rem 0.6rem; border-radius: 5px; font-size: 0.8rem; font-family: monospace; width: 220px; }
-  .route-input:focus { outline: none; border-color: #0ea5e9; }
-  .btn-run { padding: 0.3rem 0.8rem; background: #0ea5e9; color: #fff; border: none; border-radius: 5px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-  .btn-run:hover { opacity: 0.85; }
-  .route-result { margin: 0.5rem 0 0 2.5rem; background: #0a0e17; border: 1px solid #1e2a3a; border-radius: 6px; padding: 0.75rem; font-family: monospace; font-size: 0.78rem; color: #a3e635; white-space: pre-wrap; word-break: break-all; display: none; max-height: 200px; overflow-y: auto; }
-
-  /* Buttons */
-  .btn { padding: 0.5rem 1.25rem; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-  .btn:hover { opacity: 0.85; }
-  .btn-primary { background: #0ea5e9; color: #fff; }
-  .btn-danger  { background: #ef4444; color: #fff; }
-  .btn-success { background: #10b981; color: #fff; }
-
-  /* Preview */
-  .preview-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-  .camera-select { background: #0f1117; border: 1px solid #1e2a3a; color: #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.875rem; }
-  #preview-status { font-size: 0.8rem; color: #64748b; }
-  #preview-container { display: none; }
-  #preview-container iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 6px; background: #000; }
-
-  /* Clip */
-  .timeline-controls { display: flex; flex-direction: column; gap: 1rem; }
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  label { font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 0.35rem; }
-  input[type="datetime-local"] {
-    width: 100%; background: #0f1117; border: 1px solid #1e2a3a;
-    color: #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.875rem;
+  :root {
+    --ink: #17211b;
+    --muted: #647068;
+    --paper: #f3f1e9;
+    --surface: #fffdf7;
+    --line: #d8d8cd;
+    --green: #176c48;
+    --green-soft: #dcece3;
+    --orange: #de5b2a;
+    --orange-soft: #f8e2d8;
+    --yellow: #edc54a;
+    --navy: #183a4a;
+    --code: #10211a;
+    --shadow: 0 18px 50px rgba(37, 48, 41, .08);
   }
-  input[type="datetime-local"]:focus { outline: none; border-color: #0ea5e9; }
-  .timeline-bar-wrap { background: #0f1117; border: 1px solid #1e2a3a; border-radius: 6px; padding: 1rem; }
-  .timeline-label { font-size: 0.75rem; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
-  .timeline-track { height: 10px; background: #1e2a3a; border-radius: 99px; position: relative; overflow: hidden; }
-  .timeline-fill { height: 100%; background: #10b981; border-radius: 99px; width: 0%; transition: width 0.3s; }
-  .timeline-selection { position: absolute; top: 0; height: 100%; background: #0ea5e9; opacity: 0.6; pointer-events: none; }
-  .download-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  #range-info { font-size: 0.8rem; color: #64748b; }
-  #download-status { font-size: 0.8rem; margin-top: 0.5rem; }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      linear-gradient(rgba(23, 33, 27, .035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(23, 33, 27, .035) 1px, transparent 1px),
+      var(--paper);
+    background-size: 28px 28px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  button, input, select { font: inherit; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  a { color: inherit; }
+  code, pre, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+  .shell { min-height: 100vh; display: grid; grid-template-columns: 268px minmax(0, 1fr); }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 28px 22px;
+    background: var(--ink);
+    color: #edf3ee;
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 42px; }
+  .brand-mark {
+    width: 42px; height: 42px; border: 1px solid rgba(255,255,255,.3);
+    display: grid; place-items: center; font-family: Georgia, serif; font-size: 24px;
+    background: var(--orange); color: white;
+  }
+  .brand strong { display: block; font-family: Georgia, serif; font-size: 21px; letter-spacing: .02em; }
+  .brand span { color: #a9b6ad; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+
+  .nav-label { color: #78877d; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin: 0 10px 9px; }
+  .nav { display: grid; gap: 5px; }
+  .nav a {
+    text-decoration: none; padding: 11px 12px; border-left: 2px solid transparent;
+    color: #b9c5bd; font-size: 14px; transition: .15s ease;
+  }
+  .nav a:hover, .nav a.active { color: white; background: rgba(255,255,255,.06); border-left-color: var(--yellow); }
+  .side-status {
+    margin-top: auto; padding: 15px; border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.04);
+  }
+  .side-status-row { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #8b958e; box-shadow: 0 0 0 4px rgba(255,255,255,.04); }
+  .dot.ok { background: #65d18d; }
+  .dot.error { background: #ff765b; }
+  .side-host { margin-top: 9px; color: #91a097; font-size: 11px; word-break: break-all; }
+
+  main { min-width: 0; }
+  .topbar {
+    min-height: 72px; padding: 16px 42px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--line); background: rgba(243,241,233,.88); backdrop-filter: blur(14px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .eyebrow { color: var(--orange); font-size: 11px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+  .topbar-title { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .top-actions { display: flex; gap: 9px; }
+
+  .content { max-width: 1460px; padding: 46px 42px 90px; }
+  section { scroll-margin-top: 96px; margin-bottom: 74px; }
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+    gap: 24px; align-items: stretch;
+  }
+  .hero-main {
+    min-height: 360px; padding: 50px; color: white; background:
+      linear-gradient(125deg, rgba(24,58,74,.97), rgba(23,108,72,.9)),
+      var(--navy);
+    position: relative; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .hero-main::after {
+    content: ""; position: absolute; width: 350px; height: 350px; right: -130px; top: -145px;
+    border: 70px solid rgba(255,255,255,.06); border-radius: 50%;
+  }
+  .hero-kicker { color: #b9ddc9; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+  h1 { max-width: 780px; margin: 18px 0; font-size: clamp(42px, 6vw, 74px); line-height: .96; letter-spacing: -.045em; }
+  .hero-copy { max-width: 720px; color: #d6e1db; font-size: 16px; line-height: 1.7; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+
+  .summary-panel { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
+  .metric {
+    padding: 24px; background: var(--surface); border: 1px solid var(--line);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .metric-label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  .metric-value { margin-top: 12px; font-family: Georgia, serif; font-size: 31px; line-height: 1; }
+  .metric-note { margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+  .section-head { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 22px; }
+  .section-head h2 { margin: 5px 0 0; font-size: clamp(32px, 4vw, 48px); letter-spacing: -.035em; }
+  .section-copy { max-width: 620px; color: var(--muted); line-height: 1.65; font-size: 14px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .card-head {
+    padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex;
+    justify-content: space-between; align-items: center; gap: 16px;
+  }
+  .card-head strong { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  .card-body { padding: 24px; }
+  .two-col { display: grid; grid-template-columns: 1.2fr .8fr; gap: 22px; }
+  .stack { display: grid; gap: 18px; }
+
+  .btn {
+    min-height: 40px; padding: 9px 15px; border: 1px solid transparent; cursor: pointer;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 12px; font-weight: 850; letter-spacing: .055em; text-transform: uppercase; transition: .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(.98); }
+  .btn-primary { background: var(--orange); color: white; }
+  .btn-secondary { background: transparent; color: inherit; border-color: currentColor; }
+  .btn-dark { background: var(--ink); color: white; }
+  .btn-soft { background: var(--green-soft); color: var(--green); border-color: #bad8c7; }
+  .btn-danger { background: #a33d2c; color: white; }
+  .btn-small { min-height: 32px; padding: 6px 10px; font-size: 10px; }
+
+  .control-row { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+  .field { min-width: 150px; flex: 1; }
+  .field.compact { flex: 0 1 160px; }
+  label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+  input, select {
+    width: 100%; min-height: 42px; padding: 9px 11px; color: var(--ink);
+    border: 1px solid #c9cbc0; background: #fff; border-radius: 0;
+  }
+  input:focus, select:focus { outline: 2px solid rgba(23,108,72,.18); border-color: var(--green); }
+
+  .preview-stage { min-height: 390px; background: #0b1511; position: relative; display: grid; place-items: center; overflow: hidden; }
+  .preview-stage iframe { width: 100%; min-height: 440px; border: 0; background: #000; display: none; }
+  .preview-empty { max-width: 430px; padding: 35px; text-align: center; color: #9aa99f; }
+  .preview-empty strong { display: block; color: white; font-family: Georgia, serif; font-size: 28px; margin-bottom: 11px; }
+  .preview-empty p { line-height: 1.6; margin: 0; font-size: 13px; }
+
+  .timeline { padding: 18px; background: #f7f5ee; border: 1px solid var(--line); }
+  .timeline-labels { display: flex; justify-content: space-between; gap: 15px; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+  .timeline-track { height: 14px; background: #d7d9ce; position: relative; }
+  .timeline-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--green); transition: width .3s; }
+  .timeline-selection { position: absolute; inset-block: 0; background: var(--yellow); opacity: .9; }
+  .status-line { min-height: 20px; margin-top: 11px; color: var(--muted); font-size: 12px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .mini-stat { background: var(--surface); padding: 18px; }
+  .mini-stat span { color: var(--muted); font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: .1em; }
+  .mini-stat strong { display: block; margin-top: 9px; font-family: Georgia, serif; font-size: 27px; }
+
+  .api-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+  .api-groups { padding: 20px; border-right: 1px solid var(--line); background: #eeeee5; }
+  .api-groups button {
+    width: 100%; padding: 11px 12px; text-align: left; border: 0; border-left: 3px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer; font-weight: 700; font-size: 12px;
+  }
+  .api-groups button.active { color: var(--ink); border-left-color: var(--orange); background: var(--surface); }
+  .api-content { min-width: 0; }
+  .api-intro { padding: 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+  .base-url { padding: 10px 12px; background: var(--code); color: #c9f1d8; font-size: 12px; word-break: break-all; }
+  .route { border-bottom: 1px solid var(--line); }
+  .route:last-child { border-bottom: 0; }
+  .route-summary { padding: 18px 22px; display: grid; grid-template-columns: 58px minmax(180px, .8fr) minmax(220px, 1.2fr) auto; gap: 14px; align-items: center; }
+  .method { width: 52px; padding: 5px 0; text-align: center; color: white; background: var(--green); font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+  .method.patch { background: var(--orange); }
+  .route-path { font-size: 13px; font-weight: 750; word-break: break-word; }
+  .route-description { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .route-detail { display: none; padding: 0 22px 22px 94px; }
+  .route.open .route-detail { display: block; }
+  .params { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .result {
+    display: none; margin-top: 12px; padding: 15px; max-height: 300px; overflow: auto;
+    background: var(--code); color: #bde9cc; white-space: pre-wrap; word-break: break-word; font-size: 11px; line-height: 1.6;
+  }
+  .route-note { color: var(--muted); font-size: 11px; line-height: 1.55; margin: 0 0 12px; }
+
+  .architecture { padding: 18px; overflow: auto; background: white; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .architecture img { display: block; width: 100%; min-width: 900px; height: auto; }
+  .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+  .doc-card { padding: 22px; border-top: 4px solid var(--green); background: var(--surface); box-shadow: var(--shadow); }
+  .doc-card:nth-child(2) { border-top-color: var(--orange); }
+  .doc-card:nth-child(3) { border-top-color: var(--yellow); }
+  .doc-card h3 { margin: 0 0 10px; font-size: 22px; }
+  .doc-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+  .doc-card code { font-size: 11px; color: var(--green); }
+
+  .callout { padding: 20px; border-left: 5px solid var(--orange); background: var(--orange-soft); line-height: 1.65; font-size: 13px; }
+  .mobile-nav { display: none; }
+
+  @media (max-width: 1080px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .mobile-nav { display: flex; position: sticky; top: 0; z-index: 30; background: var(--ink); color: white; padding: 12px 18px; justify-content: space-between; align-items: center; }
+    .topbar { top: 54px; }
+    .hero, .two-col { grid-template-columns: 1fr; }
+    .summary-panel { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .topbar { padding: 14px 18px; }
+    .content { padding: 28px 18px 70px; }
+    .hero-main { padding: 32px 24px; }
+    .summary-panel, .stat-grid, .doc-grid { grid-template-columns: 1fr; }
+    .section-head { align-items: start; flex-direction: column; }
+    .api-layout { grid-template-columns: 1fr; }
+    .api-groups { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    .api-groups button { min-width: max-content; }
+    .route-summary { grid-template-columns: 52px 1fr auto; }
+    .route-description { grid-column: 2 / -1; }
+    .route-detail { padding-left: 22px; }
+    .params { grid-template-columns: 1fr; }
+    .top-actions .btn-secondary { display: none; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Orwell DVR</h1>
-  <span id="cam-badge">carregando câmeras...</span>
-</header>
+<div class="mobile-nav">
+  <strong>ORWELL</strong>
+  <a href="#api" class="btn btn-small btn-primary">API</a>
+</div>
 
-<div class="container">
-
-  <!-- DOCS + EXPLORER -->
-  <div class="card">
-    <div class="card-header">API Explorer</div>
-    <div class="card-body">
-
-      <!-- /healthz -->
-      <div class="route">
-        <div class="route-top">
-          <span class="method">GET</span>
-          <span class="route-path">/healthz</span>
-          <button class="btn-run" onclick="runRoute('healthz', '/healthz')">▶ Testar</button>
-        </div>
-        <div class="route-desc">Status do serviço</div>
-        <div class="route-result" id="result-healthz"></div>
-      </div>
-
-      <!-- /cameras -->
-      <div class="route">
-        <div class="route-top">
-          <span class="method">GET</span>
-          <span class="route-path">/cameras</span>
-          <button class="btn-run" onclick="runRoute('cameras', '/cameras')">▶ Testar</button>
-        </div>
-        <div class="route-desc">Lista câmeras com segmentos gravados</div>
-        <div class="route-result" id="result-cameras"></div>
-      </div>
-
-      <!-- /range -->
-      <div class="route">
-        <div class="route-top">
-          <span class="method">GET</span>
-          <span class="route-path">/range</span>
-          <button class="btn-run" onclick="runRouteFromForm('range')">▶ Testar</button>
-        </div>
-        <div class="route-desc">Período disponível de gravação para uma câmera</div>
-        <div class="route-form">
-          <input class="route-input" id="param-range-camera" value="0" placeholder="camera=0">
-        </div>
-        <div class="route-result" id="result-range"></div>
-      </div>
-
-      <!-- /segments -->
-      <div class="route">
-        <div class="route-top">
-          <span class="method">GET</span>
-          <span class="route-path">/segments</span>
-          <button class="btn-run" onclick="runRouteFromForm('segments')">▶ Testar</button>
-        </div>
-        <div class="route-desc">Lista segmentos num intervalo</div>
-        <div class="route-form">
-          <input class="route-input" id="param-segments-camera" value="0" placeholder="camera">
-          <input class="route-input" id="param-segments-start" placeholder="start (ISO8601)" style="width:200px">
-          <input class="route-input" id="param-segments-end" placeholder="end (ISO8601)" style="width:200px">
-        </div>
-        <div class="route-result" id="result-segments"></div>
-      </div>
-
-      <!-- /clips -->
-      <div class="route">
-        <div class="route-top">
-          <span class="method">GET</span>
-          <span class="route-path">/clips</span>
-          <button class="btn-run" onclick="runRouteFromForm('clips')">⬇ Baixar</button>
-        </div>
-        <div class="route-desc">Baixa MP4 do intervalo (ffmpeg copy)</div>
-        <div class="route-form">
-          <input class="route-input" id="param-clips-camera" value="0" placeholder="camera">
-          <input class="route-input" id="param-clips-start" placeholder="start (ISO8601)" style="width:200px">
-          <input class="route-input" id="param-clips-end" placeholder="end (ISO8601)" style="width:200px">
-        </div>
-        <div class="route-result" id="result-clips"></div>
-      </div>
-
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">O</div>
+      <div><strong>Orwell</strong><span>Edge video system</span></div>
     </div>
-  </div>
-
-  <!-- PREVIEW -->
-  <div class="card">
-    <div class="card-header">Preview ao vivo</div>
-    <div class="card-body">
-      <div class="preview-controls">
-        <select class="camera-select" id="preview-cam">
-          <option value="0">Câmera 0</option>
-        </select>
-        <button class="btn btn-primary" id="btn-preview" onclick="togglePreview()">▶ Ver ao vivo</button>
-        <span id="preview-status">HLS · ~5s latência</span>
-      </div>
-      <div id="preview-container">
-        <iframe id="preview-iframe" src="" allowfullscreen></iframe>
-      </div>
+    <div class="nav-label">Portal</div>
+    <nav class="nav">
+      <a href="#overview" class="active">Visão geral</a>
+      <a href="#video">Vídeo e clipes</a>
+      <a href="#upload">Upload periódico</a>
+      <a href="#api">Referência da API</a>
+      <a href="#architecture">Arquitetura</a>
+      <a href="#operations">Como acessar</a>
+    </nav>
+    <div class="side-status">
+      <div class="side-status-row"><span class="dot" id="api-dot"></span><strong id="api-state">Verificando serviços</strong></div>
+      <div class="side-host" id="device-host"></div>
     </div>
-  </div>
+  </aside>
 
-  <!-- DOWNLOAD CLIPE -->
-  <div class="card">
-    <div class="card-header">Baixar Clipe</div>
-    <div class="card-body">
-      <div class="timeline-controls">
-        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
-          <select class="camera-select" id="clip-cam" onchange="loadRange()">
-            <option value="0">Câmera 0</option>
-          </select>
-          <span id="range-info">Carregando...</span>
-        </div>
+  <main>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Operations portal</div>
+        <div class="topbar-title">DVR, preview, eventos, API e arquitetura em uma origem</div>
+      </div>
+      <div class="top-actions">
+        <a href="#architecture" class="btn btn-secondary">Arquitetura</a>
+        <a href="#api" class="btn btn-dark">Explorar API</a>
+      </div>
+    </header>
 
-        <div class="timeline-bar-wrap">
-          <div class="timeline-label">
-            <span id="range-first">—</span>
-            <span id="range-last">—</span>
+    <div class="content">
+      <section id="overview">
+        <div class="hero">
+          <div class="hero-main">
+            <div class="hero-kicker">NVIDIA Jetson edge recorder</div>
+            <h1>Vídeo no edge, operação sem adivinhação.</h1>
+            <p class="hero-copy">
+              O Orwell grava continuamente, indexa segmentos, gera MP4 sob demanda e publica
+              preview ao vivo. Este portal é a entrada única para operar o device e entender
+              seus contratos.
+            </p>
+            <div class="hero-actions">
+              <a href="#video" class="btn btn-primary">Abrir vídeo</a>
+              <a href="#api" class="btn btn-secondary">Consultar rotas</a>
+            </div>
           </div>
-          <div class="timeline-track">
-            <div class="timeline-fill" id="timeline-fill"></div>
-            <div class="timeline-selection" id="timeline-sel" style="left:0%;width:100%"></div>
+          <div class="summary-panel">
+            <div class="metric">
+              <span class="metric-label">Clip API</span>
+              <strong class="metric-value" id="metric-api">Verificando</strong>
+              <span class="metric-note">Acessada internamente por <span class="mono">/api</span></span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Câmeras indexadas</span>
+              <strong class="metric-value" id="metric-cameras">--</strong>
+              <span class="metric-note" id="camera-list">Aguardando índice local</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Origem pública</span>
+              <strong class="metric-value mono" style="font-size:20px" id="metric-origin">--</strong>
+              <span class="metric-note">Mesma URL via LAN ou Tailscale</span>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="field-row">
-          <div>
-            <label>Início</label>
-            <input type="datetime-local" id="clip-start" step="1" oninput="updateSelBar()">
+      <section id="video">
+        <div class="section-head">
+          <div><div class="eyebrow">Plano de mídia</div><h2>Preview e gravações</h2></div>
+          <p class="section-copy">
+            O preview usa HLS servido pelo MediaMTX. Os clipes gravados são montados pela Clip API
+            a partir dos segmentos indexados, sem expor os serviços internos ao navegador.
+          </p>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head">
+              <strong>Preview ao vivo</strong>
+              <span class="mono" style="font-size:11px;color:var(--muted)">/preview/cam{id}</span>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-empty" id="preview-empty">
+                <strong>Stream pausado</strong>
+                <p>Selecione uma câmera e inicie o HLS. A latência esperada é de alguns segundos.</p>
+              </div>
+              <iframe id="preview-iframe" title="Preview ao vivo" allowfullscreen></iframe>
+            </div>
+            <div class="card-body">
+              <div class="control-row">
+                <div class="field compact">
+                  <label for="preview-cam">Câmera</label>
+                  <select id="preview-cam"><option value="0">Câmera 0</option></select>
+                </div>
+                <button class="btn btn-primary" id="btn-preview" onclick="togglePreview()">Iniciar preview</button>
+                <span class="status-line" id="preview-status">HLS via gateway</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <label>Fim</label>
-            <input type="datetime-local" id="clip-end" step="1" oninput="updateSelBar()">
+
+          <div class="card">
+            <div class="card-head">
+              <strong>Gerar clipe</strong>
+              <button class="btn btn-small btn-soft" onclick="loadRange()">Atualizar faixa</button>
+            </div>
+            <div class="card-body stack">
+              <div class="control-row">
+                <div class="field compact">
+                  <label for="clip-cam">Câmera</label>
+                  <select id="clip-cam" onchange="loadRange()"><option value="0">Câmera 0</option></select>
+                </div>
+                <div class="status-line" id="range-info">Carregando faixa gravada...</div>
+              </div>
+              <div class="timeline">
+                <div class="timeline-labels"><span id="range-first">--</span><span id="range-last">--</span></div>
+                <div class="timeline-track">
+                  <div class="timeline-fill" id="timeline-fill"></div>
+                  <div class="timeline-selection" id="timeline-sel" style="left:0;width:100%"></div>
+                </div>
+              </div>
+              <div class="control-row">
+                <div class="field">
+                  <label for="clip-start">Início em America/Sao_Paulo</label>
+                  <input type="datetime-local" id="clip-start" step="1" oninput="updateSelBar()">
+                </div>
+                <div class="field">
+                  <label for="clip-end">Fim em America/Sao_Paulo</label>
+                  <input type="datetime-local" id="clip-end" step="1" oninput="updateSelBar()">
+                </div>
+              </div>
+              <button class="btn btn-dark" onclick="downloadClip()">Gerar e baixar MP4</button>
+              <div class="status-line" id="download-status"></div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="download-row">
-          <button class="btn btn-success" onclick="downloadClip()">⬇ Baixar clipe</button>
-          <button class="btn btn-primary" style="background:#6366f1" onclick="loadRange()">↺ Atualizar</button>
+      <section id="upload">
+        <div class="section-head">
+          <div><div class="eyebrow">Conveyor</div><h2>Upload periódico</h2></div>
+          <p class="section-copy">
+            Controla o envio automático de clipes finalizados. O uploader transporta arquivos MP4
+            prontos e mantém o estado de entrega no índice local.
+          </p>
         </div>
-        <div id="download-status"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Config Card -->
-  <div class="card" id="config-card">
-    <div class="card-header">Configuração de Upload</div>
-    <div class="card-body" style="display:flex;flex-direction:column;gap:1rem;">
-      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-          <input type="checkbox" id="periodic-enabled" style="width:1rem;height:1rem;">
-          <span style="font-size:0.875rem;">Upload periódico ativo</span>
-        </label>
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <span style="font-size:0.8rem;color:#94a3b8;">Intervalo (min):</span>
-          <input type="number" id="periodic-interval" min="1" max="1440"
-            style="width:80px;background:#0f1117;border:1px solid #1e2a3a;color:#e2e8f0;padding:0.3rem 0.6rem;border-radius:5px;font-size:0.875rem;">
+        <div class="card">
+          <div class="card-body stack">
+            <div class="control-row">
+              <div class="field compact">
+                <label for="periodic-enabled">Estado</label>
+                <select id="periodic-enabled">
+                  <option value="true">Ativo</option>
+                  <option value="false">Inativo</option>
+                </select>
+              </div>
+              <div class="field compact">
+                <label for="periodic-interval">Intervalo em minutos</label>
+                <input type="number" id="periodic-interval" min="1" max="1440">
+              </div>
+              <button class="btn btn-primary" onclick="saveConfig()">Salvar configuração</button>
+              <span class="status-line" id="config-status"></span>
+            </div>
+            <div class="stat-grid">
+              <div class="mini-stat"><span>Pendentes</span><strong id="stat-pending">--</strong></div>
+              <div class="mini-stat"><span>Falhas</span><strong id="stat-failed">--</strong></div>
+              <div class="mini-stat"><span>Último envio</span><strong id="stat-last" style="font-size:20px">--</strong></div>
+            </div>
+          </div>
         </div>
-        <button class="btn btn-primary" onclick="saveConfig()">Salvar</button>
-        <span id="config-status" style="font-size:0.8rem;color:#64748b;"></span>
-      </div>
-      <div style="display:flex;gap:2rem;font-size:0.8rem;color:#64748b;">
-        <span>Pendentes: <strong id="stat-pending" style="color:#f59e0b;">—</strong></span>
-        <span>Falhas: <strong id="stat-failed" style="color:#ef4444;">—</strong></span>
-        <span>Último envio: <strong id="stat-last" style="color:#10b981;">—</strong></span>
-      </div>
-    </div>
-  </div>
+      </section>
 
+      <section id="api">
+        <div class="section-head">
+          <div><div class="eyebrow">HTTP contract</div><h2>Referência da API</h2></div>
+          <p class="section-copy">
+            Todas as rotas abaixo são públicas pelo prefixo <span class="mono">/api</span>.
+            Os botões executam chamadas contra o próprio device usando a origem atual.
+          </p>
+        </div>
+
+        <div class="api-layout">
+          <div class="api-groups">
+            <button class="active" data-group="all" onclick="filterRoutes('all', this)">Todas as rotas</button>
+            <button data-group="recording" onclick="filterRoutes('recording', this)">Gravação</button>
+            <button data-group="events" onclick="filterRoutes('events', this)">Eventos</button>
+            <button data-group="friday" onclick="filterRoutes('friday', this)">Compatibilidade Friday</button>
+            <button data-group="control" onclick="filterRoutes('control', this)">Controle</button>
+          </div>
+          <div class="api-content">
+            <div class="api-intro">
+              <div>
+                <div class="eyebrow">Base URL</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:5px">Não use as portas internas dos containers.</div>
+              </div>
+              <div class="base-url" id="base-url"></div>
+            </div>
+
+            <div class="route" data-group="recording">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/healthz</span>
+                <span class="route-description">Confirma que a Clip API está respondendo.</span>
+                <button class="btn btn-small btn-soft" onclick="runSimple(event, 'health', '/healthz')">Testar</button>
+              </div>
+              <div class="route-detail"><pre class="result" id="result-health"></pre></div>
+            </div>
+
+            <div class="route" data-group="recording">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/cameras</span>
+                <span class="route-description">Lista IDs de câmera encontrados no índice de segmentos.</span>
+                <button class="btn btn-small btn-soft" onclick="runSimple(event, 'cameras', '/cameras')">Testar</button>
+              </div>
+              <div class="route-detail"><pre class="result" id="result-cameras"></pre></div>
+            </div>
+
+            <div class="route" data-group="recording">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/range</span>
+                <span class="route-description">Retorna primeiro e último timestamp gravado para a câmera.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params"><div class="field"><label>Câmera</label><input id="api-range-camera" value="0"></div></div>
+                <button class="btn btn-small btn-dark" onclick="runRange(event)">Executar GET</button>
+                <pre class="result" id="result-api-range"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="recording">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/segments</span>
+                <span class="route-description">Lista os segmentos que intersectam um intervalo UTC.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <p class="route-note">Use timestamps ISO 8601, por exemplo <code>2026-06-09T12:00:00Z</code>.</p>
+                <div class="params">
+                  <div class="field"><label>Câmera</label><input id="api-segments-camera" value="0"></div>
+                  <div class="field"><label>Start</label><input id="api-segments-start"></div>
+                  <div class="field"><label>End</label><input id="api-segments-end"></div>
+                </div>
+                <button class="btn btn-small btn-dark" onclick="runIntervalRoute(event, 'segments')">Executar GET</button>
+                <pre class="result" id="result-api-segments"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="recording">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/clips</span>
+                <span class="route-description">Gera um MP4 standalone a partir do intervalo gravado.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params">
+                  <div class="field"><label>Câmera</label><input id="api-clips-camera" value="0"></div>
+                  <div class="field"><label>Start</label><input id="api-clips-start"></div>
+                  <div class="field"><label>End</label><input id="api-clips-end"></div>
+                </div>
+                <button class="btn btn-small btn-dark" onclick="runIntervalRoute(event, 'clips')">Baixar MP4</button>
+                <pre class="result" id="result-api-clips"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="events">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/events</span>
+                <span class="route-description">Consulta eventos locais por câmera e intervalo.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params">
+                  <div class="field"><label>Câmera</label><input id="api-events-camera" value="0"></div>
+                  <div class="field"><label>Start</label><input id="api-events-start"></div>
+                  <div class="field"><label>End</label><input id="api-events-end"></div>
+                </div>
+                <button class="btn btn-small btn-dark" onclick="runIntervalRoute(event, 'events')">Executar GET</button>
+                <pre class="result" id="result-api-events"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="events">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/events/{event_id}/clip</span>
+                <span class="route-description">Baixa o MP4 finalizado associado a um evento.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params"><div class="field"><label>Event ID</label><input id="api-event-id" placeholder="UUID do evento"></div></div>
+                <button class="btn btn-small btn-dark" onclick="downloadEventClip(event)">Baixar MP4</button>
+                <pre class="result" id="result-api-event-clip"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="friday">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/orwell/events/{sensor_id}</span>
+                <span class="route-description">Contrato consumido pelo Friday para listar vídeos do sensor.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params">
+                  <div class="field"><label>Sensor ID</label><input id="api-friday-sensor" placeholder="4cbb47c1331a"></div>
+                  <div class="field"><label>Start opcional</label><input id="api-friday-start"></div>
+                  <div class="field"><label>End opcional</label><input id="api-friday-end"></div>
+                </div>
+                <button class="btn btn-small btn-dark" onclick="runFridayEvents(event)">Executar GET</button>
+                <pre class="result" id="result-api-friday-events"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="friday">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/orwell/clip/{sensor_id}/{event_id}</span>
+                <span class="route-description">Entrega ao Friday o MP4 standalone de um evento.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Parâmetros</button>
+              </div>
+              <div class="route-detail">
+                <div class="params">
+                  <div class="field"><label>Sensor ID</label><input id="api-friday-clip-sensor" placeholder="4cbb47c1331a"></div>
+                  <div class="field"><label>Event ID</label><input id="api-friday-event" placeholder="2026-...__uuid"></div>
+                </div>
+                <button class="btn btn-small btn-dark" onclick="downloadFridayClip(event)">Baixar MP4</button>
+                <pre class="result" id="result-api-friday-clip"></pre>
+              </div>
+            </div>
+
+            <div class="route" data-group="control">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/config</span>
+                <span class="route-description">Lê a configuração de upload periódico exposta ao portal.</span>
+                <button class="btn btn-small btn-soft" onclick="runSimple(event, 'config', '/config')">Testar</button>
+              </div>
+              <div class="route-detail"><pre class="result" id="result-config"></pre></div>
+            </div>
+
+            <div class="route" data-group="control">
+              <div class="route-summary">
+                <span class="method patch">PATCH</span><span class="route-path">/config</span>
+                <span class="route-description">Atualiza estado e intervalo do upload periódico.</span>
+                <button class="btn btn-small btn-soft" onclick="openRoute(event)">Detalhes</button>
+              </div>
+              <div class="route-detail">
+                <p class="route-note">Body JSON: <code>{"periodic_upload_enabled": true, "periodic_upload_interval_s": 300}</code>. Use o formulário de Upload periódico acima para alterar com validação.</p>
+              </div>
+            </div>
+
+            <div class="route" data-group="control">
+              <div class="route-summary">
+                <span class="method">GET</span><span class="route-path">/upload-stats</span>
+                <span class="route-description">Retorna pendências, falhas e timestamp do último upload.</span>
+                <button class="btn btn-small btn-soft" onclick="runSimple(event, 'stats', '/upload-stats')">Testar</button>
+              </div>
+              <div class="route-detail"><pre class="result" id="result-stats"></pre></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="section-head">
+          <div><div class="eyebrow">Living documentation</div><h2>Arquitetura executável</h2></div>
+          <div class="hero-actions" style="margin:0">
+            <a class="btn btn-secondary" href="/architecture.d2" target="_blank">Abrir fonte .d2</a>
+            <a class="btn btn-dark" href="/architecture.svg" target="_blank">Abrir SVG</a>
+          </div>
+        </div>
+        <div class="architecture">
+          <img src="/architecture.svg" alt="Diagrama da arquitetura Orwell">
+        </div>
+        <div class="doc-grid">
+          <article class="doc-card">
+            <h3>Uma borda HTTP</h3>
+            <p>O navegador acessa apenas <code>/</code>, <code>/api</code> e <code>/preview</code>. Nginx no Compose e Traefik no K3s preservam o mesmo contrato.</p>
+          </article>
+          <article class="doc-card">
+            <h3>Mídia finalizada</h3>
+            <p>O recorder publica <code>clip.mp4</code> atomicamente. Clip API e uploader nunca consomem fragments ainda abertos.</p>
+          </article>
+          <article class="doc-card">
+            <h3>Pronto para K3s</h3>
+            <p>Apps HTTP usam <code>targetPort 8080</code>; Services apresentam porta <code>80</code> ao Traefik. RTSP e WebRTC continuam protocolos dedicados.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="operations">
+        <div class="section-head">
+          <div><div class="eyebrow">Runbook rápido</div><h2>Como acessar</h2></div>
+          <p class="section-copy">A URL não muda conforme a rede. Apenas o hostname ou IP que resolve o device muda.</p>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head"><strong>LAN e Tailscale</strong></div>
+            <div class="card-body stack">
+              <div><label>Dashboard</label><div class="base-url" id="doc-dashboard-url"></div></div>
+              <div><label>API</label><div class="base-url" id="doc-api-url"></div></div>
+              <div><label>Preview HLS</label><div class="base-url" id="doc-preview-url"></div></div>
+              <div><label>RTSP para VLC</label><div class="base-url" id="doc-rtsp-url"></div></div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="callout">
+              <strong>Regra operacional:</strong> não acesse diretamente <span class="mono">8080</span> ou
+              <span class="mono">8888</span>. Essas portas pertencem à rede interna dos serviços.
+              Use sempre a origem pública do gateway.
+            </div>
+            <div class="card">
+              <div class="card-head"><strong>Mapa de paths</strong></div>
+              <div class="card-body">
+                <div class="route-note"><code>/</code> portal e documentação</div>
+                <div class="route-note"><code>/api/*</code> Clip API, eventos e configuração</div>
+                <div class="route-note"><code>/preview/*</code> HLS do MediaMTX</div>
+                <div class="route-note"><code>:8554</code> RTSP para players externos</div>
+                <div class="route-note"><code>:8889</code> WebRTC direto, quando necessário</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
 </div>
 
 <script>
-const CLIP_API = "__CLIP_API_URL__";
-const PREVIEW_BASE = "__PREVIEW_URL__";
-let rangeFirst = null, rangeLast = null;
-
-// ── init ──────────────────────────────────────────────────────────────
-async function init() {
-  try {
-    const cams = await fetch(CLIP_API + "/cameras").then(r => r.json());
-    document.getElementById("cam-badge").textContent =
-      cams.length ? cams.map(c => "cam" + c).join(" · ") + " online" : "nenhuma câmera";
-    ["preview-cam", "clip-cam"].forEach(id => {
-      const sel = document.getElementById(id);
-      sel.innerHTML = cams.map(c => `<option value="${c}">Câmera ${c}</option>`).join("");
-    });
-    // pré-preenche camera nos forms de rota
-    const cam = cams[0] || "0";
-    document.getElementById("param-range-camera").value = cam;
-    document.getElementById("param-segments-camera").value = cam;
-    document.getElementById("param-clips-camera").value = cam;
-  } catch(e) {
-    document.getElementById("cam-badge").textContent = "clip-api offline";
-  }
-  loadRange();
-}
-
-// ── API explorer ──────────────────────────────────────────────────────
-async function runRoute(id, path) {
-  const el = document.getElementById("result-" + id);
-  el.style.display = "block";
-  el.textContent = "carregando...";
-  try {
-    const r = await fetch(CLIP_API + path);
-    const data = await r.json();
-    el.textContent = JSON.stringify(data, null, 2);
-  } catch(e) {
-    el.textContent = "Erro: " + e.message;
-  }
-}
-
-async function runRouteFromForm(id) {
-  const el = document.getElementById("result-" + id);
-  el.style.display = "block";
-
-  if (id === "range") {
-    const cam = document.getElementById("param-range-camera").value;
-    return runRoute("range", `/range?camera=${encodeURIComponent(cam)}`);
-  }
-
-  if (id === "segments") {
-    const cam   = document.getElementById("param-segments-camera").value;
-    const start = document.getElementById("param-segments-start").value;
-    const end   = document.getElementById("param-segments-end").value;
-    if (!start || !end) { el.textContent = "Preencha start e end (ex: 2026-06-03T20:00:00Z)"; return; }
-    return runRoute("segments", `/segments?camera=${encodeURIComponent(cam)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
-  }
-
-  if (id === "clips") {
-    const cam   = document.getElementById("param-clips-camera").value;
-    const start = document.getElementById("param-clips-start").value;
-    const end   = document.getElementById("param-clips-end").value;
-    if (!start || !end) { el.textContent = "Preencha start e end (ex: 2026-06-03T20:00:00Z)"; return; }
-    el.textContent = "gerando clipe...";
-    try {
-      const url = `${CLIP_API}/clips?camera=${encodeURIComponent(cam)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        el.textContent = "Erro " + resp.status + ": " + (err.detail || resp.statusText);
-        return;
-      }
-      const blob = await resp.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `clip-cam${cam}.mp4`;
-      a.click();
-      el.textContent = "✓ Download iniciado (" + (blob.size / 1024 / 1024).toFixed(1) + " MB)";
-    } catch(e) {
-      el.textContent = "Erro: " + e.message;
-    }
-  }
-}
-
-// ── preview ───────────────────────────────────────────────────────────
+const CLIP_API = "/api";
+const PREVIEW_BASE = "/preview";
+const TZ = "America/Sao_Paulo";
+let rangeFirst = null;
+let rangeLast = null;
 let previewOn = false;
+
+const $ = id => document.getElementById(id);
+
+function setResult(id, value, isError = false) {
+  const el = $("result-" + id);
+  el.style.display = "block";
+  el.style.color = isError ? "#ff9c86" : "#bde9cc";
+  el.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  el.closest(".route").classList.add("open");
+}
+
+async function fetchJson(path, options) {
+  const response = await fetch(CLIP_API + path, options);
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.detail || `HTTP ${response.status}`);
+  return body;
+}
+
+async function init() {
+  const host = window.location.host;
+  $("device-host").textContent = host;
+  $("metric-origin").textContent = window.location.origin;
+  $("base-url").textContent = window.location.origin + CLIP_API;
+  $("doc-dashboard-url").textContent = window.location.origin;
+  $("doc-api-url").textContent = window.location.origin + "/api/healthz";
+  $("doc-preview-url").textContent = window.location.origin + "/preview/cam0";
+  $("doc-rtsp-url").textContent = `rtsp://${window.location.hostname}:8554/cam0`;
+
+  try {
+    await fetchJson("/healthz");
+    $("api-dot").className = "dot ok";
+    $("api-state").textContent = "Clip API online";
+    $("metric-api").textContent = "Online";
+    const cameras = await fetchJson("/cameras");
+    $("metric-cameras").textContent = cameras.length;
+    $("camera-list").textContent = cameras.length ? cameras.map(c => `cam${c}`).join(" / ") : "Nenhum segmento indexado";
+    populateCameras(cameras);
+  } catch (error) {
+    $("api-dot").className = "dot error";
+    $("api-state").textContent = "Clip API offline";
+    $("metric-api").textContent = "Offline";
+    $("camera-list").textContent = error.message;
+  }
+
+  await Promise.allSettled([loadRange(), loadConfig()]);
+}
+
+function populateCameras(cameras) {
+  const values = cameras.length ? cameras : ["0"];
+  ["preview-cam", "clip-cam"].forEach(id => {
+    $(id).innerHTML = values.map(camera => `<option value="${camera}">Câmera ${camera}</option>`).join("");
+  });
+  const camera = values[0];
+  ["api-range-camera", "api-segments-camera", "api-clips-camera", "api-events-camera"].forEach(id => $(id).value = camera);
+}
+
 function togglePreview() {
-  const cam = document.getElementById("preview-cam").value;
-  const iframe = document.getElementById("preview-iframe");
-  const container = document.getElementById("preview-container");
-  const btn = document.getElementById("btn-preview");
+  const iframe = $("preview-iframe");
+  const empty = $("preview-empty");
+  const button = $("btn-preview");
   if (!previewOn) {
-    iframe.src = `${PREVIEW_BASE}/cam${cam}`;
-    container.style.display = "block";
-    btn.textContent = "⏹ Parar";
-    btn.className = "btn btn-danger";
-    previewOn = true;
+    iframe.src = `${PREVIEW_BASE}/cam${$("preview-cam").value}`;
+    iframe.style.display = "block";
+    empty.style.display = "none";
+    button.textContent = "Parar preview";
+    button.className = "btn btn-danger";
+    $("preview-status").textContent = "Stream HLS conectado";
   } else {
     iframe.src = "";
-    container.style.display = "none";
-    btn.textContent = "▶ Ver ao vivo";
-    btn.className = "btn btn-primary";
-    previewOn = false;
+    iframe.style.display = "none";
+    empty.style.display = "block";
+    button.textContent = "Iniciar preview";
+    button.className = "btn btn-primary";
+    $("preview-status").textContent = "HLS via gateway";
   }
+  previewOn = !previewOn;
 }
 
-// ── timeline ──────────────────────────────────────────────────────────
 async function loadRange() {
-  const cam = document.getElementById("clip-cam").value;
-  const info = document.getElementById("range-info");
-  const fill = document.getElementById("timeline-fill");
-  info.textContent = "Carregando...";
-  fill.style.width = "0%";
+  const camera = $("clip-cam").value;
+  $("range-info").textContent = "Carregando faixa gravada...";
+  $("timeline-fill").style.width = "0";
   try {
-    const data = await fetch(`${CLIP_API}/range?camera=${cam}`).then(r => r.json());
+    const data = await fetchJson(`/range?camera=${encodeURIComponent(camera)}`);
     if (!data.first) {
-      info.textContent = "Nenhum vídeo gravado ainda";
-      document.getElementById("range-first").textContent = "—";
-      document.getElementById("range-last").textContent = "—";
-      rangeFirst = null; rangeLast = null;
+      rangeFirst = null;
+      rangeLast = null;
+      $("range-info").textContent = "Nenhum vídeo gravado";
+      $("range-first").textContent = "--";
+      $("range-last").textContent = "--";
       return;
     }
     rangeFirst = new Date(data.first);
-    rangeLast  = new Date(data.last);
-    const durMin = ((rangeLast - rangeFirst) / 60000).toFixed(0);
-    const durH   = ((rangeLast - rangeFirst) / 3600000).toFixed(1);
-    info.textContent = durMin < 90 ? `${durMin} min disponíveis` : `${durH}h disponíveis`;
-    document.getElementById("range-first").textContent = fmtLocal(rangeFirst);
-    document.getElementById("range-last").textContent  = fmtLocal(rangeLast);
-    fill.style.width = "100%";
+    rangeLast = new Date(data.last);
+    const minutes = Math.round((rangeLast - rangeFirst) / 60000);
+    $("range-info").textContent = minutes < 90 ? `${minutes} minutos disponíveis` : `${(minutes / 60).toFixed(1)} horas disponíveis`;
+    $("range-first").textContent = fmtLocal(rangeFirst);
+    $("range-last").textContent = fmtLocal(rangeLast);
+    $("timeline-fill").style.width = "100%";
 
-    // pré-preenche pickers: últimos 30s
-    const end   = new Date(rangeLast);
+    const end = new Date(rangeLast);
     const start = new Date(Math.max(rangeFirst.getTime(), end.getTime() - 30000));
-    document.getElementById("clip-start").value = toInputVal(start);
-    document.getElementById("clip-end").value   = toInputVal(end);
-
-    // sincroniza também os campos do API explorer
-    document.getElementById("param-segments-start").value = rangeFirst.toISOString().replace(".000Z", "Z");
-    document.getElementById("param-segments-end").value   = rangeLast.toISOString().replace(".000Z", "Z");
-    document.getElementById("param-clips-start").value    = start.toISOString().replace(".000Z", "Z");
-    document.getElementById("param-clips-end").value      = end.toISOString().replace(".000Z", "Z");
-
+    $("clip-start").value = toInputVal(start);
+    $("clip-end").value = toInputVal(end);
+    syncApiDates(start, end);
     updateSelBar();
-  } catch(e) {
-    info.textContent = "Erro ao carregar range: " + e.message;
+  } catch (error) {
+    $("range-info").textContent = "Falha: " + error.message;
   }
+}
+
+function syncApiDates(start, end) {
+  const first = rangeFirst?.toISOString() || start.toISOString();
+  const last = rangeLast?.toISOString() || end.toISOString();
+  ["segments", "events"].forEach(name => {
+    $(`api-${name}-start`).value = first;
+    $(`api-${name}-end`).value = last;
+  });
+  $("api-clips-start").value = start.toISOString();
+  $("api-clips-end").value = end.toISOString();
 }
 
 function updateSelBar() {
   if (!rangeFirst || !rangeLast) return;
-  const s = new Date(document.getElementById("clip-start").value);
-  const e = new Date(document.getElementById("clip-end").value);
+  const start = localInputToDate($("clip-start").value);
+  const end = localInputToDate($("clip-end").value);
   const total = rangeLast - rangeFirst;
-  if (total <= 0) return;
-  const left  = Math.max(0, Math.min(100, (s - rangeFirst) / total * 100));
-  const right = Math.max(0, Math.min(100, (e - rangeFirst) / total * 100));
-  const sel = document.getElementById("timeline-sel");
-  sel.style.left  = left + "%";
-  sel.style.width = Math.max(0, right - left) + "%";
+  if (!start || !end || total <= 0) return;
+  const left = clamp((start - rangeFirst) / total * 100);
+  const right = clamp((end - rangeFirst) / total * 100);
+  $("timeline-sel").style.left = left + "%";
+  $("timeline-sel").style.width = Math.max(0, right - left) + "%";
 }
 
 async function downloadClip() {
-  const cam   = document.getElementById("clip-cam").value;
-  const start = document.getElementById("clip-start").value;
-  const end   = document.getElementById("clip-end").value;
-  const status = document.getElementById("download-status");
-  if (!start || !end) { status.textContent = "Preencha início e fim."; return; }
-  const s = new Date(start).toISOString();
-  const e = new Date(end).toISOString();
-  const url = `${CLIP_API}/clips?camera=${cam}&start=${encodeURIComponent(s)}&end=${encodeURIComponent(e)}`;
-  status.innerHTML = `<span style="color:#0ea5e9">⏳ Gerando clipe...</span>`;
+  const camera = $("clip-cam").value;
+  const start = localInputToDate($("clip-start").value);
+  const end = localInputToDate($("clip-end").value);
+  if (!start || !end || start >= end) {
+    $("download-status").textContent = "Informe um intervalo válido.";
+    return;
+  }
+  $("download-status").textContent = "Gerando MP4...";
+  await downloadFile(
+    `${CLIP_API}/clips?camera=${encodeURIComponent(camera)}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`,
+    `clip-cam${camera}-${start.toISOString().replace(/[:.]/g, "-")}.mp4`,
+    $("download-status")
+  );
+}
+
+async function downloadFile(url, filename, statusEl) {
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      status.innerHTML = `<span style="color:#ef4444">Erro: ${err.detail || resp.status}</span>`;
-      return;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.detail || `HTTP ${response.status}`);
     }
-    const blob = await resp.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `clip-cam${cam}-${start.replace(/[: ]/g,"-")}.mp4`;
-    a.click();
-    status.innerHTML = `<span style="color:#10b981">✓ Download iniciado (${(blob.size/1024/1024).toFixed(1)} MB)</span>`;
-  } catch(e) {
-    status.innerHTML = `<span style="color:#ef4444">Erro de rede: ${e.message}</span>`;
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+    statusEl.textContent = `Download iniciado (${(blob.size / 1048576).toFixed(1)} MB)`;
+  } catch (error) {
+    statusEl.textContent = "Falha: " + error.message;
   }
 }
-
-// ── helpers ───────────────────────────────────────────────────────────
-const TZ = "America/Sao_Paulo";
-
-function fmtLocal(d) {
-  return d.toLocaleString("pt-BR", {timeZone: TZ, day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit"});
-}
-function toInputVal(d) {
-  // converte para BRT e formata como "YYYY-MM-DDTHH:MM:SS" para o datetime-local
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: TZ, year:"numeric", month:"2-digit", day:"2-digit",
-    hour:"2-digit", minute:"2-digit", second:"2-digit", hour12: false
-  }).formatToParts(d);
-  const get = t => parts.find(p => p.type === t).value;
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`;
-}
-
-init();
 
 async function loadConfig() {
   try {
-    const [cfgRes, statsRes] = await Promise.all([
-      fetch(`${CLIP_API}/config`),
-      fetch(`${CLIP_API}/upload-stats`)
-    ]);
-    if (cfgRes.ok) {
-      const cfg = await cfgRes.json();
-      document.getElementById('periodic-enabled').checked = cfg.periodic_upload_enabled;
-      document.getElementById('periodic-interval').value = Math.round(cfg.periodic_upload_interval_s / 60);
-    }
-    if (statsRes.ok) {
-      const stats = await statsRes.json();
-      document.getElementById('stat-pending').textContent = stats.pending;
-      document.getElementById('stat-failed').textContent = stats.failed;
-      document.getElementById('stat-last').textContent =
-        stats.last_uploaded_at
-          ? new Date(stats.last_uploaded_at * 1000).toLocaleTimeString('pt-BR')
-          : 'nunca';
-    }
-  } catch (e) { console.warn('loadConfig error', e); }
+    const [config, stats] = await Promise.all([fetchJson("/config"), fetchJson("/upload-stats")]);
+    $("periodic-enabled").value = String(config.periodic_upload_enabled);
+    $("periodic-interval").value = Math.round(config.periodic_upload_interval_s / 60);
+    $("stat-pending").textContent = stats.pending;
+    $("stat-failed").textContent = stats.failed;
+    $("stat-last").textContent = stats.last_uploaded_at
+      ? new Date(stats.last_uploaded_at * 1000).toLocaleString("pt-BR")
+      : "Nunca";
+  } catch (error) {
+    $("config-status").textContent = "Não foi possível carregar: " + error.message;
+  }
 }
 
 async function saveConfig() {
-  const enabled = document.getElementById('periodic-enabled').checked;
-  const minutes = parseInt(document.getElementById('periodic-interval').value, 10);
-  const status = document.getElementById('config-status');
-  status.textContent = 'Salvando...';
+  const minutes = Number.parseInt($("periodic-interval").value, 10);
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    $("config-status").textContent = "O intervalo deve ser maior que zero.";
+    return;
+  }
+  $("config-status").textContent = "Salvando...";
   try {
-    const r = await fetch(`${CLIP_API}/config`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    await fetchJson("/config", {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        periodic_upload_enabled: enabled,
+        periodic_upload_enabled: $("periodic-enabled").value === "true",
         periodic_upload_interval_s: minutes * 60
       })
     });
-    if (r.ok) {
-      status.textContent = 'Salvo ✓';
-      status.style.color = '#10b981';
-    } else {
-      status.textContent = `Erro ${r.status}`;
-      status.style.color = '#ef4444';
-    }
-  } catch (e) {
-    status.textContent = 'Falha de rede';
-    status.style.color = '#ef4444';
+    $("config-status").textContent = "Configuração salva.";
+    await loadConfig();
+  } catch (error) {
+    $("config-status").textContent = "Falha: " + error.message;
   }
-  setTimeout(() => { status.textContent = ''; }, 3000);
 }
 
-loadConfig();
+function filterRoutes(group, button) {
+  document.querySelectorAll(".api-groups button").forEach(item => item.classList.remove("active"));
+  button.classList.add("active");
+  document.querySelectorAll(".route").forEach(route => {
+    route.style.display = group === "all" || route.dataset.group === group ? "block" : "none";
+  });
+}
+
+function openRoute(event) {
+  event.currentTarget.closest(".route").classList.toggle("open");
+}
+
+async function runSimple(event, id, path) {
+  event.currentTarget.closest(".route").classList.add("open");
+  setResult(id, "Carregando...");
+  try { setResult(id, await fetchJson(path)); }
+  catch (error) { setResult(id, error.message, true); }
+}
+
+async function runRange(event) {
+  setResult("api-range", "Carregando...");
+  try { setResult("api-range", await fetchJson(`/range?camera=${encodeURIComponent($("api-range-camera").value)}`)); }
+  catch (error) { setResult("api-range", error.message, true); }
+}
+
+async function runIntervalRoute(event, name) {
+  const camera = $(`api-${name}-camera`).value;
+  const start = $(`api-${name}-start`).value;
+  const end = $(`api-${name}-end`).value;
+  if (!camera || !start || !end) {
+    setResult(`api-${name}`, "Preencha camera, start e end.", true);
+    return;
+  }
+  const path = `/${name}?camera=${encodeURIComponent(camera)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+  if (name === "clips") {
+    const status = $(`result-api-${name}`);
+    status.style.display = "block";
+    await downloadFile(CLIP_API + path, `clip-cam${camera}.mp4`, status);
+    return;
+  }
+  setResult(`api-${name}`, "Carregando...");
+  try { setResult(`api-${name}`, await fetchJson(path)); }
+  catch (error) { setResult(`api-${name}`, error.message, true); }
+}
+
+async function downloadEventClip() {
+  const eventId = $("api-event-id").value;
+  const status = $("result-api-event-clip");
+  status.style.display = "block";
+  if (!eventId) { status.textContent = "Informe o event_id."; return; }
+  await downloadFile(`${CLIP_API}/events/${encodeURIComponent(eventId)}/clip`, `event-${eventId}.mp4`, status);
+}
+
+async function runFridayEvents() {
+  const sensor = $("api-friday-sensor").value;
+  const params = new URLSearchParams();
+  if ($("api-friday-start").value) params.set("start", $("api-friday-start").value);
+  if ($("api-friday-end").value) params.set("end", $("api-friday-end").value);
+  const suffix = params.toString() ? "?" + params : "";
+  setResult("api-friday-events", "Carregando...");
+  try { setResult("api-friday-events", await fetchJson(`/orwell/events/${encodeURIComponent(sensor)}${suffix}`)); }
+  catch (error) { setResult("api-friday-events", error.message, true); }
+}
+
+async function downloadFridayClip() {
+  const sensor = $("api-friday-clip-sensor").value;
+  const eventId = $("api-friday-event").value;
+  const status = $("result-api-friday-clip");
+  status.style.display = "block";
+  if (!sensor || !eventId) { status.textContent = "Informe sensor_id e event_id."; return; }
+  await downloadFile(
+    `${CLIP_API}/orwell/clip/${encodeURIComponent(sensor)}/${encodeURIComponent(eventId)}`,
+    `${eventId}.mp4`,
+    status
+  );
+}
+
+function fmtLocal(date) {
+  return date.toLocaleString("pt-BR", {
+    timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+}
+
+function toInputVal(date) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+  }).formatToParts(date);
+  const value = type => parts.find(part => part.type === type).value;
+  return `${value("year")}-${value("month")}-${value("day")}T${value("hour")}:${value("minute")}:${value("second")}`;
+}
+
+function localInputToDate(value) {
+  if (!value) return null;
+  return new Date(value + "-03:00");
+}
+
+function clamp(value) { return Math.max(0, Math.min(100, value)); }
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    document.querySelectorAll(".nav a").forEach(link => {
+      link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id);
+    });
+  });
+}, {rootMargin: "-20% 0px -70% 0px"});
+document.querySelectorAll("section[id]").forEach(section => observer.observe(section));
+
+init();
 setInterval(loadConfig, 30000);
 </script>
 </body>

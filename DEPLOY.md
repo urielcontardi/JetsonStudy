@@ -19,8 +19,12 @@ sudo reboot
 sudo ./deploy/host-verify.sh           # checagem de sanidade
 docker compose --profile jetson build  # builda as imagens (1ª vez; demora)
 sudo systemctl start orwell            # sobe tudo; e passa a subir SOZINHO no boot
-curl localhost:8080/healthz            # {"status":"ok"}
+curl localhost/healthz                 # ok
 ```
+
+O primeiro build do recorder baixa a imagem DeepStream e instala o runtime de mídia. Rebuilds de
+código reutilizam essa camada; detalhes de cache, CI e distribuição em frota estão em
+[`docs/build-and-release.md`](docs/build-and-release.md).
 
 ---
 
@@ -102,8 +106,9 @@ A partir daqui, **todo reboot sobe os containers automaticamente** (systemd + re
 
 Verificar:
 ```bash
-curl localhost:8080/healthz                 # {"status":"ok"}
-curl localhost:8080/cameras                 # ["0","1"] quando o recorder já gravou
+curl localhost/healthz                      # ok
+curl localhost/api/healthz                  # {"status":"ok"}
+curl localhost/api/cameras                  # ["0","1"] quando o recorder já gravou
 ls /var/lib/orwell/data/0/                   # init.mp4 + live.m3u8 + segmentos
 ```
 
@@ -111,7 +116,7 @@ ls /var/lib/orwell/data/0/                   # init.mp4 + live.m3u8 + segmentos
 
 De qualquer lugar do seu tailnet:
 ```bash
-curl "http://orwell-01:8080/clips?camera=0&start=2026-05-31T14:00:00Z&end=2026-05-31T14:00:10Z" -o clip.mp4
+curl "http://orwell-01/api/clips?camera=0&start=2026-05-31T14:00:00Z&end=2026-05-31T14:00:10Z" -o clip.mp4
 ```
 
 ## Operação do dia a dia
@@ -128,16 +133,15 @@ git pull && docker compose --profile jetson build && sudo systemctl restart orwe
 `docker compose` → **K3s + Rancher Fleet** (GitOps) + **registry** de imagens. O `orwell.service`
 e os scripts `deploy/` podem virar imagem base / Rancher Elemental. Ver `docs/operations.md`.
 
-## Preview ao vivo das câmeras (dev)
+## Preview ao vivo das câmeras
 
-Para ver as câmeras ao vivo do Mac durante o bring-up (sem GUI no Jetson):
+O profile `jetson` sobe o MediaMTX junto do recorder. O dashboard resolve API e preview usando
+o mesmo hostname Tailscale pelo qual a página foi aberta:
 ```bash
-# em config/orwell.yaml: preview.enabled: true
-docker compose --profile dev up -d preview          # sobe o MediaMTX
-docker compose --profile jetson restart recorder
+docker compose --profile jetson up -d
 ```
-No Mac (via Tailscale): VLC → `rtsp://orwell-nx:8554/cam0`, ou navegador → `http://orwell-nx:8889/cam0`.
-Off por padrão; não pesa na gravação quando desligado. Ver `docs/operations.md` §1.1.
+No Mac (via Tailscale): dashboard → `http://orwell-<id>`, HLS →
+`http://orwell-<id>/preview/cam0`, ou VLC → `rtsp://orwell-<id>:8554/cam0`.
 
 ## Validar o encoder por hardware (teste mais barato, antes dos containers)
 

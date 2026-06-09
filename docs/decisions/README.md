@@ -19,3 +19,4 @@ Michael Nygard. Atualize o status se uma decisão for revista.
 | [0012](0012-orin-nx-caminho-de-escala.md) | Orin NX como **alvo primário** (NVENC/H.265) | Aceito |
 | [0013](0013-provisionamento-como-codigo.md) | Provisionamento do host como código (reproduzível) | Aceito |
 | [0014](0014-encoder-configuravel-hw-sw.md) | Encoder selecionável por config (NVENC HW + x264 SW fallback) | Aceito |
+| [0015](0015-borda-http-unica-compativel-k3s.md) | Borda HTTP única compatível com Traefik/K3s | Aceito |

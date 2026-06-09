@@ -7,7 +7,6 @@ from typing import Any
 
 import yaml
 from fastapi import Body, FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -29,7 +28,6 @@ class ConfigPatch(BaseModel):
 
 def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> FastAPI:
     app = FastAPI(title="Orwell Clip API")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     index = SegmentIndex(index_db_path())
     event_index = EventIndex(index_db_path())
     ddir = data_dir()

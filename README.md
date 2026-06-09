@@ -15,7 +15,7 @@ que dispara o **envio de ~10 s de vídeo** de cada evento detectado para a nuvem
 ZED X One S ×2  →  [recorder: DeepStream]  →  NVMe (segmentos + índice SQLite)
    (GMSL2)            encode HW H.265 (NVENC)
                       tee + IA (Fase 2)    ├─→ [clip-api: FastAPI] ──(Tailscale)──→ você
-                                           └─→ [preview: MediaMTX] (dev only, RTSP/WebRTC)
+                                           └─→ [preview: MediaMTX] (HLS/RTSP/WebRTC)
 ```
 
 - **Plataforma:** Jetson Orin NX (NVENC → encode por hardware; Nano = fallback SW), JetPack + driver GMSL Stereolabs.
@@ -27,8 +27,9 @@ ZED X One S ×2  →  [recorder: DeepStream]  →  NVMe (segmentos + índice SQL
 | Serviço | **Função** |
 |---|---|
 | `recorder` | Captura, encode, gravação contínua |
+| `gateway` | Borda HTTP única: `/`, `/api`, `/preview` |
 | `clip-api` | `GET /clips?camera&start&end` → MP4 |
-| `preview` *(dev)* | Stream ao vivo RTSP/WebRTC via MediaMTX |
+| `preview` | Stream ao vivo RTSP/HLS/WebRTC via MediaMTX |
 
 ## Status / Roadmap
 

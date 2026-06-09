@@ -12,8 +12,8 @@ aberta** no Jetson.
 
 - Instalar o Tailscale **no host** e autenticar o device no seu tailnet.
 - **MagicDNS:** cada device ganha um nome (ex.: `orwell-01`).
-- A **Clip API** escuta numa porta (ex.: `8080`). Acesso remoto:
-  `GET http://orwell-01:8080/clips?camera=0&start=...&end=...` → MP4.
+- O **gateway** é a única borda HTTP, na porta padrão `80`. Acesso remoto:
+  `GET http://orwell-01/api/clips?camera=0&start=...&end=...` → MP4.
 - **ACLs** do Tailscale restringem quem alcança quais devices/portas.
 - **Tailscale SSH** para console seguro (operar/depurar sem expor SSH público).
 
@@ -27,11 +27,11 @@ vídeo para o Mac e renderize lá.
 2. **Console/operar:** `ssh orwell@orwell-nx` (Tailscale SSH). Containers: `docker compose up -d
    <serviço>`, `down`, `restart`, `logs -f <serviço>`.
 3. **Editar código:** **VS Code / Cursor Remote-SSH** sobre o tailnet — editar como se fosse local,
-   terminal integrado, **port-forward automático** (8080 → `localhost:8080` no Mac).
-4. **Ver gravado / quase-ao-vivo:** **VLC/Safari** abrindo a HLS (`.m3u8`) ou um clipe da Clip API
-   (`http://orwell-nx:8080/clips?...`), pelo tailnet.
-5. **Ver câmera ao vivo (bring-up):** subir o serviço de preview —
-   `docker compose --profile dev up -d preview` (config `preview.enabled: true`) — e abrir
+   terminal integrado, com port-forward apenas quando necessário para depuração.
+4. **Ver gravado / quase-ao-vivo:** dashboard e Clip API em
+   `http://orwell-nx` e `http://orwell-nx/api/...`.
+5. **Ver câmera ao vivo:** o MediaMTX sobe como serviço base; o recorder publica quando
+   `preview.enabled: true`. O dashboard acessa HLS pelo gateway em `/preview`.
    **`rtsp://orwell-nx:8554/cam0`** no VLC ou **`http://orwell-nx:8889/cam0`** (WebRTC) no navegador.
 6. **Sanity-check rápido:** snapshot JPEG via GStreamer (`num-buffers=1 ! jpegenc`) + `scp`.
 

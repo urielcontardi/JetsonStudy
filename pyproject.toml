@@ -29,7 +29,7 @@ include = ["orwell_shared*"]
 
 [tool.pytest.ini_options]
 testpaths = ["shared/tests", "services", "tests"]
-pythonpath = ["shared", "services/clip-api", "services/recorder"]
+pythonpath = ["shared", "services/clip-api", "services/dashboard", "services/recorder"]
 addopts = "--import-mode=importlib"
 
 [dependency-groups]

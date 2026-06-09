@@ -23,7 +23,8 @@ Para definições de termos, ver [`glossary.md`](glossary.md).
 ├─────────────────────────────────────────────────────────────────────┤
 │ CONTAINERS (docker-compose → futuramente K3s)                       │
 │                                                                     │
-│   recorder (DeepStream/pyds)   uploader (VSTP)   clip-api (FastAPI) │
+│   gateway → dashboard / clip-api / preview                          │
+│   recorder (DeepStream/pyds)   uploader (VSTP)                      │
 │                                                                     │
 │   Volume compartilhado: NVMe (segmentos + índice SQLite)            │
 └─────────────────────────────────────────────────────────────────────┘
@@ -41,7 +42,7 @@ nvarguscamerasrc(cam0) ┐
                        ├─ nvstreammux (batch=2) ─ nvinfer (TensorRT)* ─ nvtracker* ─ tee ┐
 nvarguscamerasrc(cam1) ┘                                                                  │
                                                                                           ├─ [A] encode ─ splitmuxsink ─→ NVMe (segmentos)
-                                                                                          └─ [B] preview (RTSP/WebRTC, dev only)
+                                                                                          └─ [B] preview (RTSP/HLS/WebRTC)
 * nvinfer/nvtracker: stub/desligado na Fase 1; modelo real na Fase 2.
 ```
 
@@ -53,8 +54,8 @@ nvarguscamerasrc(cam1) ┘                                                      
   inferência (`inference_stage`) fica cabeada porém **desligada** (`ai.enabled: false`) até a
   Fase 2. Cada segmento fechado é registrado no índice. Ver
   [ADR-0006](decisions/0006-mp4-padrao-splitmuxsink.md).
-- **[B] Preview (dev):** branch RTSP/WebRTC opcional via MediaMTX (`preview.enabled: true`).
-  Off por padrão; não afeta a gravação.
+- **[B] Preview:** branch H.264 via MediaMTX (`preview.enabled: true`), exposta por RTSP, HLS e
+  WebRTC. O profile `jetson` sobe o MediaMTX antes do recorder.
 
 ### 3.1 Publicação de clips de evento
 
@@ -85,13 +86,19 @@ nvarguscamerasrc(cam1) ┘                                                      
 
 ## 5. Plano de controle
 
+### 5.0 `gateway`
+- Única borda HTTP pública, Nginx na porta padrão `80`.
+- `/` encaminha ao dashboard; `/api/*` ao clip-api; `/preview/*` ao HLS do MediaMTX.
+- Dashboard e Clip API escutam internamente em `8080`; o HLS do MediaMTX permanece em `8888`.
+- No K3s, o Traefik substitui o container Nginx preservando exatamente os mesmos paths.
+
 ### 5.1 `clip-api` (FastAPI)
 - `GET /clips?camera={id}&start={iso8601}&end={iso8601}`
   1. Consulta o índice → segmentos que cobrem a janela.
   2. `ffmpeg -c copy` concatena/recorta nas bordas de keyframe → MP4 temporário.
   3. Responde `video/mp4` (stream/download). `404` se fora da janela retida.
 - `GET /healthz`, `GET /cameras`, `GET /segments?...` (introspecção/debug).
-- Exposta na interface do **Tailscale**.
+- Acessível externamente apenas através de `/api` no gateway.
 
 ### 5.2 `uploader`
 - Lê eventos pendentes no SQLite e exige que `clip_path` seja um arquivo regular finalizado.

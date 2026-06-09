@@ -1,0 +1,27 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: orwell-http
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: orwell-strip-api
+      services:
+        - name: orwell-clip-api
+          port: 80
+    - match: PathPrefix(`/preview`)
+      kind: Rule
+      middlewares:
+        - name: orwell-strip-preview
+      services:
+        - name: orwell-preview
+          port: 80
+    - match: PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: orwell-dashboard
+          port: 80

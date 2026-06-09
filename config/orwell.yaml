@@ -38,7 +38,7 @@ retention:
   disk_high_watermark_pct: 85   # era 50
 
 preview:
-  enabled: false
+  enabled: true
   rtsp_base_url: rtsp://preview:8554
 
 conveyor:

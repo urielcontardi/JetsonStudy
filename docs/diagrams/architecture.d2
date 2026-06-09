@@ -39,12 +39,17 @@ jetson: "Jetson Orin NX" {
     style.stroke: "#2f9e44"
   }
 
-  dashboard: "🐳 dashboard  :3000\n\nInterface web para\nclips e eventos" {
+  dashboard: "🐳 dashboard  :8080 interno\n\nInterface web para\nclips e eventos" {
     style.fill: "#d3f9d8"
     style.stroke: "#2f9e44"
   }
 
-  preview: "🐳 preview  (dev only)\n\nStream ao vivo RTSP/WebRTC\ndas câmeras para monitorar\ndurante desenvolvimento.\n:8554 · :8889" {
+  gateway: "🐳 gateway  :80 público\n\n/, /api e /preview" {
+    style.fill: "#e7f5ff"
+    style.stroke: "#1971c2"
+  }
+
+  preview: "🐳 preview\n\nStream ao vivo RTSP/HLS/WebRTC\ndas câmeras para monitorar.\n:8554 · :8888 · :8889" {
     style.fill: "#f8f9fa"
     style.stroke: "#adb5bd"
     style.stroke-dash: 5
@@ -77,9 +82,10 @@ registerapi: "omni-ops\nregister-api" {
 cameras -> jetson.recorder: GMSL2 via Argus
 jetson.recorder -> jetson.storage: "grava fMP4\nindexas\nbuffer"
 jetson.storage -> jetson.clipapi: "serve clips\nquery"
-jetson.clipapi -> jetson.dashboard: REST
-jetson.dashboard -> tailscale: :3000
-jetson.clipapi -> tailscale: :8080
+jetson.clipapi -> jetson.gateway: "/api"
+jetson.dashboard -> jetson.gateway: "/"
+jetson.preview -> jetson.gateway: "/preview (HLS)"
+jetson.gateway -> tailscale: :80
 operator -> tailscale: acesso remoto
 
 # ─────────────────────────────────────────────────────────────────────

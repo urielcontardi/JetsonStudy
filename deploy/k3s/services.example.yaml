@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orwell-clip-api
+spec:
+  selector:
+    app.kubernetes.io/name: orwell-clip-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orwell-dashboard
+spec:
+  selector:
+    app.kubernetes.io/name: orwell-dashboard
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orwell-preview
+spec:
+  selector:
+    app.kubernetes.io/name: orwell-preview
+  ports:
+    - name: http-hls
+      port: 80
+      targetPort: 8888
