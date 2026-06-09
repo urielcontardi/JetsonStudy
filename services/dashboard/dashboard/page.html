@@ -71,7 +71,7 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 </div>
 
 <div id="preview-wrap">
-  <iframe id="preview-frame" src="/preview/cam0" allowfullscreen></iframe>
+  <iframe id="preview-frame" allowfullscreen></iframe>
 </div>
 
 <div id="clip-bar">
@@ -137,6 +137,9 @@ btnDl.addEventListener('click', e => {
   dlDur.textContent = 'gerando…';
   setTimeout(updateDl, 3000);
 });
+
+// preview: bate direto na porta 8888 do MediaMTX, sem passar pelo nginx proxy
+document.getElementById('preview-frame').src = location.protocol + '//' + location.hostname + ':8888/cam0';
 
 // status bar
 document.getElementById('s-host').textContent = location.hostname;

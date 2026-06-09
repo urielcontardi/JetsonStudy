@@ -109,5 +109,6 @@ services:
       - ./config/mediamtx.yml:/mediamtx.yml:ro
     ports:
       - "8554:8554"
+      - "8888:8888"
       - "8889:8889"
       - "8189:8189/udp"
