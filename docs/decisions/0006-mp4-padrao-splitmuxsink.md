@@ -31,3 +31,5 @@ byte-range, concatenação limpa, streaming no navegador).
 - Init segment (fMP4) por câmera/parâmetros + segmentos `.m4s`.
 - Índice em **SQLite** (ADR-0007) mapeia tempo → segmento; playlist `.m3u8` é redundância útil
   para players.
+- Fragments MP4 não são concatenados byte a byte. Clips destinados à API ou ao Conveyor são
+  remuxados para um único MP4 standalone e publicados atomicamente antes de entrarem no índice.

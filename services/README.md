@@ -25,8 +25,9 @@ curl localhost:8080/healthz        # {"status":"ok"}
 > a ponta antes do Jetson, gere segmentos de exemplo com o fixture de `tests/conftest.py`.
 
 ## Estrutura
-- `shared/orwell_shared/` — lógica pura (config, índice, retenção, clipes).
+- `shared/orwell_shared/` — lógica pura (config, índice, retenção, publicação atômica de clipes).
 - `services/clip-api/clip_api/` — FastAPI: `GET /clips`, `/cameras`, `/segments`, `/healthz`.
 - `services/recorder/recorder/` — captura/encode/gravação on-device (DeepStream/GStreamer).
   **Implementado** (pipeline + indexer + main); partes puras têm testes; o runtime GStreamer só
-  roda no Jetson (ver `DEPLOY.md`). IA (`nvinfer`) fica para a Fase 2.
+  roda no Jetson (ver `DEPLOY.md`). Também finaliza e publica `clip.mp4` antes do SQLite.
+- `services/uploader/uploader/` — entrega eventos já finalizados via VSTP; não transforma mídia.

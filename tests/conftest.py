@@ -21,6 +21,7 @@ def sample_segments(tmp_path):
             [FFMPEG, "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x240:d=2:r=15",
              "-c:v", "libx264", "-g", "15",
              "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+             "-f", "mp4",
              str(out)],
             check=True, capture_output=True,
         )

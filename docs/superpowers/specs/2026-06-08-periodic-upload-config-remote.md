@@ -60,8 +60,8 @@ versão de container.
 
 ```
 recorder (timer a cada conveyor.periodic_upload_interval_s)
-  1. copia cam-N-buf-0.m4s + cam-N-buf-1.m4s → /events/<uuid>_periodic/
-     para cada câmera configurada
+  1. cria snapshot dos fragments fechados, remuxa e publica
+     `/events/<uuid>/clip.mp4` atomicamente para cada câmera configurada
   2. INSERT INTO events (
        id=uuid, camera_id=cam, t_evento=now(),
        label='periodic', trigger_type='periodic',

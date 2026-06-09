@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 
 from orwell_shared.events import Event, EventIndex
-from recorder.event_handler import flush_event_buffer
+from recorder.event_handler import finalize_event_buffer
 
 
 class PeriodicFlusher:
@@ -35,8 +35,10 @@ class PeriodicFlusher:
         )
         self._thread.start()
 
-    def stop(self) -> None:
+    def stop(self, timeout: float = 30.0) -> None:
         self._stop.set()
+        if self._thread is not None and self._thread is not threading.current_thread():
+            self._thread.join(timeout=timeout)
 
     def update_config(self, enabled: bool, interval_s: float) -> None:
         with self._lock:
@@ -64,21 +66,20 @@ class PeriodicFlusher:
         t_now = time.time()
         for camera_id in self._cameras:
             event_id = str(uuid.uuid4())
-            clip_files = flush_event_buffer(
+            clip = finalize_event_buffer(
                 tmpfs_dir=self._tmpfs_dir,
                 events_dir=self._events_dir,
                 event_id=event_id,
                 camera_id=camera_id,
             )
-            if not clip_files:
+            if clip is None:
                 continue
-            clip_path = str(clip_files[0].parent)
             self._index.add_event(Event(
                 id=event_id,
                 camera_id=camera_id,
                 t_evento=t_now,
                 label="periodic",
                 confidence=1.0,
-                clip_path=clip_path,
+                clip_path=str(clip),
                 trigger_type="periodic",
             ))

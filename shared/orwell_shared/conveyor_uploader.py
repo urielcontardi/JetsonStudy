@@ -39,9 +39,10 @@ class ConveyorUploader:
         self._hardware_id = hardware_id
 
     def upload(self, event_id: str, clip_path: Path, metadata: dict) -> str:
-        buf0 = (clip_path / "buf-0.m4s").read_bytes()
-        buf1_path = clip_path / "buf-1.m4s"
-        buf1 = buf1_path.read_bytes() if buf1_path.exists() else b""
+        clip_path = Path(clip_path)
+        if not clip_path.is_file():
+            raise ValueError(f"event clip is not a finalized file: {clip_path}")
+        clip_bytes = clip_path.read_bytes()
 
         t_evento = float(metadata.get("t_evento", time.time()))
         ts = Timestamp()
@@ -75,7 +76,7 @@ class ConveyorUploader:
         pkg.package_parameters.append(_param("event_id", string_value=event_id))
         pkg.package_parameters.append(_param("camera_id", string_value=camera_id))
 
-        pkg.data = buf0 + buf1
+        pkg.data = clip_bytes
 
         self._client.send_dev_sample(pkg.SerializeToString())
         return f"conveyor://{self._sensor_ext_id}/samples/{event_id}"

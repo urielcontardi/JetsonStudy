@@ -22,7 +22,7 @@ O dispositivo age como **gateway + sensor** com o mesmo `extId` — sem separaç
 | Retry strategy | Background thread + SQLite como fila | `uploaded_at IS NULL` já existe no schema; pipeline GStreamer nunca bloqueia |
 | Payload format | `samples.v1.Package` serializado | Padrão Tractian; `format` identifica o tipo ao backend |
 | Dependência de cliente | Reimplementar inline (~150 linhas) | `tractian-iot-emulator` requer Python ≥3.11; Jetson roda 3.10 |
-| Transporte do clip | Concatenar buf-0.m4s + buf-1.m4s num único `pdevsample` | Menos chamadas; fMP4 concatenado é reproduzível |
+| Transporte do clip | Enviar `clip.mp4` standalone publicado pelo recorder | Fragments MP4 não podem ser concatenados byte a byte |
 | Backoff | Intervalo fixo (sem exponential backoff) | Padrão de falha dominante é ausência de rede por horas; complexidade desnecessária |
 
 ---
@@ -50,13 +50,13 @@ events.py        — adiciona EventIndex.mark_uploaded() + EventIndex.pending_up
 
 ```
 GStreamer probe → handle_detection()
-                      └─ flush_event_buffer()    # copia buf-0/1.m4s → /events/<id>/
-                      └─ EventIndex.add_event()  # uploaded_at = None
+                      └─ publish_event_clip()    # snapshot + remux atômico em clip.mp4
+                      └─ EventIndex.add_event()  # somente após clip finalizado
 
 UploadWorker (thread daemon, poll a cada conveyor.upload_interval_s)
   └─ EventIndex.pending_uploads()               # WHERE uploaded_at IS NULL
   └─ para cada evento:
-       ├─ lê clip_path/buf-0.m4s + buf-1.m4s e concatena
+       ├─ lê o arquivo final `clip_path`
        ├─ monta samples.v1.Package (ver abaixo)
        ├─ ConveyorClient.send_dev_sample(ext_id, package_bytes)   → pdevsample
        └─ EventIndex.mark_uploaded(event_id)
@@ -92,7 +92,7 @@ Package {
     Parameter(key="event_id",        string_value=event_id),
     Parameter(key="orwell_version",  string_value="0.1.0"),
   ]
-  data = buf_0_bytes + buf_1_bytes                        # fMP4 concatenado
+  data = clip_mp4_bytes                                   # MP4 standalone validado
 }
 ```
 

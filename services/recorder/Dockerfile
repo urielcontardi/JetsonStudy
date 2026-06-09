@@ -8,7 +8,7 @@ FROM ${DEEPSTREAM_IMAGE}
 
 # python3-gi (gi.repository.Gst) costuma já existir na base L4T; garantimos mesmo assim.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip python3-gi gir1.2-gstreamer-1.0 \
+    ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

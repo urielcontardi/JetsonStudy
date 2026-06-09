@@ -14,7 +14,9 @@ Os imports de `gi` e `pyds` são tardios para o pacote ser importável em máqui
 """
 from __future__ import annotations
 
+import math
 import os
+import signal
 import threading
 import time
 from pathlib import Path
@@ -51,15 +53,13 @@ def _make_format_location_cb(data_dir: str, camera_id: str):
 
 
 def _make_buf_format_location_cb(tmpfs_dir: str, camera_id: str):
-    """Callback do splitmuxsink do event buffer: alterna entre buf-0.m4s e buf-1.m4s."""
+    """Give every fragment a unique path so completed files are immutable."""
     buf_dir = Path(tmpfs_dir) / camera_id
     buf_dir.mkdir(parents=True, exist_ok=True)
-    count = [0]
 
-    def _cb(_splitmux, _fragment_id, *_args):
-        idx = count[0] % 2
-        count[0] += 1
-        return str(buf_dir / f"buf-{idx}.m4s")
+    def _cb(_splitmux, fragment_id, *_args):
+        epoch_ms = int(time.time() * 1000)
+        return str(buf_dir / f"buf-{int(fragment_id):08d}-{epoch_ms}.mp4")
     return _cb
 
 
@@ -76,10 +76,13 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
     desc += f"t. ! queue ! {dvr_encoder_chain(profile)} ! {dvr_sink_desc} "
 
     if event_buf_cfg.enabled:
-        buf_seg_ns = int((event_buf_cfg.buffer_seconds / 2) * 1_000_000_000)
+        buffer_segment_s = max(1.0, profile.segment_seconds)
+        buf_seg_ns = int(buffer_segment_s * 1_000_000_000)
+        max_buffer_files = max(2, math.ceil(event_buf_cfg.buffer_seconds / buffer_segment_s) + 1)
         buf_sink_desc = (
             "splitmuxsink name=buf_sink "
             f"max-size-time={buf_seg_ns} "
+            f"max-files={max_buffer_files} "
             'muxer-factory=mp4mux '
             'muxer-properties="properties,fragment-duration=1000,faststart=true"'
         )
@@ -258,10 +261,13 @@ def main() -> None:
     threading.Thread(target=_indexer_loop, args=(index, config, stop), daemon=True).start()
 
     loop = GLib.MainLoop()
+    def _stop_main_loop(_signum, _frame):
+        GLib.idle_add(loop.quit)
+
+    signal.signal(signal.SIGTERM, _stop_main_loop)
+    signal.signal(signal.SIGINT, _stop_main_loop)
     try:
         loop.run()
-    except KeyboardInterrupt:
-        pass
     finally:
         stop.set()
         flusher.stop()

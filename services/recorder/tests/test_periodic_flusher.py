@@ -8,7 +8,7 @@ from recorder.periodic_flusher import PeriodicFlusher
 
 
 @pytest.fixture
-def setup(tmp_path):
+def setup(tmp_path, monkeypatch):
     tmpfs = tmp_path / "shm"
     events_dir = tmp_path / "events"
     db = tmp_path / "idx.sqlite"
@@ -16,10 +16,18 @@ def setup(tmp_path):
     for cam in ("cam0", "cam1"):
         buf_dir = tmpfs / cam
         buf_dir.mkdir(parents=True)
-        (buf_dir / "buf-0.m4s").write_bytes(b"SEGMENT0-" + cam.encode())
-        (buf_dir / "buf-1.m4s").write_bytes(b"SEGMENT1-" + cam.encode())
+        (buf_dir / "buf-0001.mp4").write_bytes(b"SEGMENT0-" + cam.encode())
+        (buf_dir / "buf-0002.mp4").write_bytes(b"SEGMENT1-" + cam.encode())
 
     idx = EventIndex(db)
+
+    def fake_publish(_source_dir, target_dir, event_id):
+        clip = Path(target_dir) / event_id / "clip.mp4"
+        clip.parent.mkdir(parents=True)
+        clip.write_bytes(b"FINALIZED")
+        return clip
+
+    monkeypatch.setattr("recorder.event_handler.publish_event_clip", fake_publish)
     return tmpfs, events_dir, idx
 
 
@@ -41,8 +49,9 @@ def test_flush_copies_buffer_files(setup, tmp_path):
     for ev in pending:
         assert ev.trigger_type == "periodic"
         assert ev.label == "periodic"
-        clip_dir = Path(ev.clip_path)
-        assert (clip_dir / "buf-0.m4s").exists()
+        clip = Path(ev.clip_path)
+        assert clip.name == "clip.mp4"
+        assert clip.exists()
 
 
 def test_flush_disabled_does_nothing(setup):

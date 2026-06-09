@@ -13,17 +13,17 @@ def _make_index(tmp_path):
 def _make_event(tmp_path, event_id="evt-1", camera_id="cam0") -> tuple[Event, Path]:
     clip_dir = tmp_path / "events" / event_id
     clip_dir.mkdir(parents=True)
-    (clip_dir / "buf-0.m4s").write_bytes(b"SEG0")
-    (clip_dir / "buf-1.m4s").write_bytes(b"SEG1")
+    clip = clip_dir / "clip.mp4"
+    clip.write_bytes(b"FINALIZED")
     event = Event(
         id=event_id,
         camera_id=camera_id,
         t_evento=time.time(),
         label="pessoa",
         confidence=0.9,
-        clip_path=str(clip_dir),
+        clip_path=str(clip),
     )
-    return event, clip_dir
+    return event, clip
 
 
 def test_worker_uploads_pending_event(tmp_path):

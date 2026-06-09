@@ -23,7 +23,7 @@ Para definições de termos, ver [`glossary.md`](glossary.md).
 ├─────────────────────────────────────────────────────────────────────┤
 │ CONTAINERS (docker-compose → futuramente K3s)                       │
 │                                                                     │
-│   recorder (DeepStream/pyds)   clip-api (FastAPI)                   │
+│   recorder (DeepStream/pyds)   uploader (VSTP)   clip-api (FastAPI) │
 │                                                                     │
 │   Volume compartilhado: NVMe (segmentos + índice SQLite)            │
 └─────────────────────────────────────────────────────────────────────┘
@@ -56,6 +56,15 @@ nvarguscamerasrc(cam1) ┘                                                      
 - **[B] Preview (dev):** branch RTSP/WebRTC opcional via MediaMTX (`preview.enabled: true`).
   Off por padrão; não afeta a gravação.
 
+### 3.1 Publicação de clips de evento
+
+- O event buffer usa fragments MP4 curtos, com nomes únicos, e mantém apenas a janela configurada.
+- Ao disparar um evento, o `recorder` copia snapshots dos fragments, descarta snapshots ainda
+  abertos com `ffprobe` e faz remux com `ffmpeg -c copy -movflags +faststart`.
+- O resultado é publicado por rename atômico como `/events/<event_id>/clip.mp4`.
+- Somente depois da publicação o evento entra no SQLite. Diretório de fragments nunca é contrato
+  entre serviços e nunca é enviado ao Conveyor.
+
 ## 4. Armazenamento e índice
 
 - **Segmentos:** **fMP4/CMAF de ~4s** (configurável) no NVMe + **playlist `.m3u8`** por câmera.
@@ -71,6 +80,8 @@ nvarguscamerasrc(cam1) ┘                                                      
   (e remove do índice). Retenção = "o máximo que couber".
 - **Clipes:** `ffmpeg -c copy` concatena os segmentos que cobrem a janela →
   **MP4 *faststart* standalone** (fácil de tocar/baixar).
+- **Eventos:** o campo `events.clip_path` aponta para um `clip.mp4` finalizado. O `uploader` monta
+  o protobuf e transporta esse arquivo sem alterar a mídia.
 
 ## 5. Plano de controle
 
@@ -81,6 +92,11 @@ nvarguscamerasrc(cam1) ┘                                                      
   3. Responde `video/mp4` (stream/download). `404` se fora da janela retida.
 - `GET /healthz`, `GET /cameras`, `GET /segments?...` (introspecção/debug).
 - Exposta na interface do **Tailscale**.
+
+### 5.2 `uploader`
+- Lê eventos pendentes no SQLite e exige que `clip_path` seja um arquivo regular finalizado.
+- Serializa o `Package` e envia via VSTP. Não concatena fragments e não executa FFmpeg.
+- `/events` é montado como somente leitura; `/data` permanece leitura/escrita para marcar uploads.
 
 ## 6. Configuração (12-factor)
 

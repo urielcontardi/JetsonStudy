@@ -60,8 +60,8 @@ class UploadWorker:
             if self._stop_event.is_set():
                 break
             clip_path = Path(event.clip_path) if event.clip_path else None
-            if clip_path is None or not clip_path.exists():
-                logger.warning("clip not found for event %s, marking as failed", event.id)
+            if clip_path is None or not clip_path.is_file():
+                logger.warning("finalized clip not found for event %s, marking as failed", event.id)
                 self._index.mark_upload_failed(event.id)
                 continue
             try:

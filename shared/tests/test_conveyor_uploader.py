@@ -7,22 +7,22 @@ from orwell_shared.samples_pb2 import Package, TriggerType
 from orwell_shared.conveyor_uploader import ConveyorUploader
 
 
-def _make_clip_dir(tmp_path: Path) -> Path:
+def _make_clip(tmp_path: Path) -> Path:
     clip_dir = tmp_path / "events" / "evt-123"
     clip_dir.mkdir(parents=True)
-    (clip_dir / "buf-0.m4s").write_bytes(b"SEGMENT_0")
-    (clip_dir / "buf-1.m4s").write_bytes(b"SEGMENT_1")
-    return clip_dir
+    clip = clip_dir / "clip.mp4"
+    clip.write_bytes(b"FINALIZED_MP4")
+    return clip
 
 
 def test_upload_calls_send_dev_sample(tmp_path):
     mock_client = MagicMock()
     uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
-    clip_dir = _make_clip_dir(tmp_path)
+    clip = _make_clip(tmp_path)
 
     uploader.upload(
         event_id="evt-123",
-        clip_path=clip_dir,
+        clip_path=clip,
         metadata={
             "camera_id": "cam0",
             "label": "pessoa",
@@ -35,15 +35,15 @@ def test_upload_calls_send_dev_sample(tmp_path):
     mock_client.send_dev_sample.assert_called_once()
 
 
-def test_upload_concatenates_clip_files(tmp_path):
+def test_upload_sends_finalized_clip_file(tmp_path):
     sent_bytes = []
     mock_client = MagicMock()
     mock_client.send_dev_sample.side_effect = lambda b: sent_bytes.append(b)
 
     uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
-    clip_dir = _make_clip_dir(tmp_path)
+    clip = _make_clip(tmp_path)
 
-    uploader.upload("evt-123", clip_dir, {
+    uploader.upload("evt-123", clip, {
         "camera_id": "cam0", "label": "foo", "confidence": 0.5,
         "bbox": None, "t_evento": time.time(),
     })
@@ -51,7 +51,21 @@ def test_upload_concatenates_clip_files(tmp_path):
     assert len(sent_bytes) == 1
     pkg = Package()
     pkg.ParseFromString(sent_bytes[0])
-    assert pkg.data == b"SEGMENT_0SEGMENT_1"
+    assert pkg.data == b"FINALIZED_MP4"
+
+
+def test_upload_rejects_fragment_directory(tmp_path):
+    mock_client = MagicMock()
+    uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
+    clip_dir = tmp_path / "events" / "legacy"
+    clip_dir.mkdir(parents=True)
+
+    try:
+        uploader.upload("evt-123", clip_dir, {})
+    except ValueError as exc:
+        assert "finalized file" in str(exc)
+    else:
+        raise AssertionError("expected directory clip_path to be rejected")
 
 
 def test_upload_package_format(tmp_path):
@@ -60,9 +74,9 @@ def test_upload_package_format(tmp_path):
     mock_client.send_dev_sample.side_effect = lambda b: sent_bytes.append(b)
 
     uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
-    clip_dir = _make_clip_dir(tmp_path)
+    clip = _make_clip(tmp_path)
 
-    uploader.upload("evt-123", clip_dir, {
+    uploader.upload("evt-123", clip, {
         "camera_id": "cam0", "label": "pessoa", "confidence": 0.92,
         "bbox": {"x1": 0.1}, "t_evento": 1748906400.0,
     })
@@ -87,9 +101,9 @@ def test_upload_package_format(tmp_path):
 def test_upload_returns_uri(tmp_path):
     mock_client = MagicMock()
     uploader = ConveyorUploader(mock_client, sensor_ext_id="aabbccddee00")
-    clip_dir = _make_clip_dir(tmp_path)
+    clip = _make_clip(tmp_path)
 
-    uri = uploader.upload("evt-123", clip_dir, {
+    uri = uploader.upload("evt-123", clip, {
         "camera_id": "cam0", "label": "x", "confidence": 0.5,
         "bbox": None, "t_evento": time.time(),
     })
@@ -120,15 +134,15 @@ def test_upload_periodic_uses_trigger_type_periodic(tmp_path):
 
     clip_dir = tmp_path / "events" / "evt-p"
     clip_dir.mkdir(parents=True)
-    (clip_dir / "buf-0.m4s").write_bytes(b"A")
-    (clip_dir / "buf-1.m4s").write_bytes(b"B")
+    clip = clip_dir / "clip.mp4"
+    clip.write_bytes(b"FINALIZED")
 
     mock_client = MagicMock()
     uploader = ConveyorUploader(client=mock_client, sensor_ext_id="test-sensor")
 
     uploader.upload(
         event_id="12345678-1234-5678-1234-567812345678",
-        clip_path=clip_dir,
+        clip_path=clip,
         metadata={
             "camera_id": "cam0",
             "label": "periodic",

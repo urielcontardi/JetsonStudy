@@ -104,8 +104,11 @@ def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> 
         if ev is None or ev.clip_path is None:
             raise HTTPException(status_code=404, detail="event clip not found")
         out = Path(tempfile.gettempdir()) / f"event-{event_id}.mp4"
+        clip_path = Path(ev.clip_path)
+        if clip_path.is_file():
+            return FileResponse(str(clip_path), media_type="video/mp4", filename=f"event-{event_id}.mp4")
         try:
-            extract_event_fn(Path(ev.clip_path), out)
+            extract_event_fn(clip_path, out)
         except NoSegments:
             raise HTTPException(status_code=404, detail="clip files not found")
         return FileResponse(str(out), media_type="video/mp4", filename=f"event-{event_id}.mp4")
@@ -134,8 +137,11 @@ def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> 
         if ev is None or ev.clip_path is None:
             raise HTTPException(status_code=404, detail="clip not found")
         out = Path(tempfile.gettempdir()) / f"orwell-{event_id}.mp4"
+        clip_path = Path(ev.clip_path)
+        if clip_path.is_file():
+            return FileResponse(str(clip_path), media_type="video/mp4", filename=f"clip-{event_id}.mp4")
         try:
-            extract_event_fn(Path(ev.clip_path), out)
+            extract_event_fn(clip_path, out)
         except NoSegments:
             raise HTTPException(status_code=404, detail="clip files not found")
         return FileResponse(str(out), media_type="video/mp4", filename=f"clip-{event_id}.mp4")

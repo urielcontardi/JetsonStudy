@@ -1,46 +1,52 @@
 import json
+from pathlib import Path
 
 import pytest
 
 from orwell_shared.events import EventIndex
-from recorder.event_handler import flush_event_buffer, handle_detection
+from recorder.event_handler import finalize_event_buffer, handle_detection
 
 
 @pytest.fixture
-def setup(tmp_path):
+def setup(tmp_path, monkeypatch):
     tmpfs = tmp_path / "shm"
     buf_dir = tmpfs / "cam0"
     buf_dir.mkdir(parents=True)
-    (buf_dir / "buf-0.m4s").write_bytes(b"DATA0")
-    (buf_dir / "buf-1.m4s").write_bytes(b"DATA1")
+    (buf_dir / "buf-0001.mp4").write_bytes(b"DATA0")
+    (buf_dir / "buf-0002.mp4").write_bytes(b"DATA1")
     events_dir = tmp_path / "events"
     idx = EventIndex(tmp_path / "idx.sqlite")
+
+    def fake_publish(_source_dir, target_dir, event_id):
+        clip = Path(target_dir) / event_id / "clip.mp4"
+        clip.parent.mkdir(parents=True)
+        clip.write_bytes(b"FINALIZED")
+        return clip
+
+    monkeypatch.setattr("recorder.event_handler.publish_event_clip", fake_publish)
     return tmpfs, events_dir, idx
 
 
-def test_flush_copies_both_buf_files(setup):
+def test_finalize_publishes_standalone_clip(setup):
     tmpfs, events_dir, _ = setup
-    result = flush_event_buffer(str(tmpfs), str(events_dir), "evt-abc", "cam0")
-    assert len(result) == 2
-    assert all(f.exists() for f in result)
-    assert all(f.parent.name == "evt-abc" for f in result)
+    result = finalize_event_buffer(str(tmpfs), str(events_dir), "evt-abc", "cam0")
+    assert result == events_dir / "evt-abc" / "clip.mp4"
+    assert result.read_bytes() == b"FINALIZED"
 
 
-def test_flush_skips_missing_files(tmp_path):
+def test_finalize_returns_none_without_closed_fragments(tmp_path, monkeypatch):
+    from orwell_shared.clips import NoSegments
+
     tmpfs = tmp_path / "shm"
     buf_dir = tmpfs / "cam0"
     buf_dir.mkdir(parents=True)
-    (buf_dir / "buf-0.m4s").write_bytes(b"x")
 
-    result = flush_event_buffer(str(tmpfs), str(tmp_path / "events"), "evt-1", "cam0")
-    assert len(result) == 1
+    def no_segments(*_args):
+        raise NoSegments("active fragment only")
 
-
-def test_flush_empty_buf_returns_empty(tmp_path):
-    tmpfs = tmp_path / "shm"
-    (tmpfs / "cam0").mkdir(parents=True)
-    result = flush_event_buffer(str(tmpfs), str(tmp_path / "events"), "evt-0", "cam0")
-    assert result == []
+    monkeypatch.setattr("recorder.event_handler.publish_event_clip", no_segments)
+    result = finalize_event_buffer(str(tmpfs), str(tmp_path / "events"), "evt-1", "cam0")
+    assert result is None
 
 
 def test_handle_detection_persists_event(setup):
@@ -62,6 +68,7 @@ def test_handle_detection_persists_event(setup):
     assert abs(ev.t_evento - 1000.0) < 0.001
     assert ev.confidence == 0.9
     assert ev.clip_path is not None
+    assert Path(ev.clip_path).name == "clip.mp4"
     bbox = json.loads(ev.bbox_json)
     assert bbox["x"] == pytest.approx(0.1)
 
