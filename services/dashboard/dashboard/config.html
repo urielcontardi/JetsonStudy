@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>orwell · config</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #0d0d0d; color: #b0b0b0; font-family: monospace; font-size: 13px; display: flex; flex-direction: column; }
+#statusbar {
+  display: flex; align-items: stretch; flex-shrink: 0;
+  height: 34px; background: #111; border-bottom: 1px solid #1e1e1e;
+}
+.s-item { display: flex; align-items: center; padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap; }
+#s-host { color: #555; } #s-rec { font-weight: bold; } #s-rec.on { color: #4caf50; } #s-rec.off { color: #444; }
+#s-disk { color: #777; } #s-event { color: #555; } .s-gap { flex: 1; }
+nav { display: flex; }
+nav a { display: flex; align-items: center; padding: 0 14px; color: #3a3a3a; text-decoration: none; border-left: 1px solid #1e1e1e; font-size: 12px; }
+nav a:hover { color: #888; background: #161616; }
+nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
+
+main { padding: 28px 24px; max-width: 540px; display: flex; flex-direction: column; gap: 24px; }
+h2 { font-size: 13px; color: #555; font-weight: normal; text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid #1e1e1e; padding-bottom: 8px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+label { color: #666; font-size: 12px; }
+.row { display: flex; align-items: center; gap: 12px; }
+input[type="number"] {
+  background: #111; border: 1px solid #252525; color: #999;
+  padding: 4px 8px; font-family: monospace; font-size: 13px; width: 120px;
+}
+input[type="number"]:focus { outline: none; border-color: #4caf50; color: #c8c8c8; }
+.toggle {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.toggle input { display: none; }
+.toggle-track {
+  width: 32px; height: 18px; background: #252525; border: 1px solid #333;
+  border-radius: 9px; position: relative; transition: background .15s;
+}
+.toggle input:checked + .toggle-track { background: #2e6e3a; border-color: #4caf50; }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; background: #555; border-radius: 50%; transition: left .15s, background .15s;
+}
+.toggle input:checked ~ .toggle-thumb { left: 16px; background: #4caf50; }
+.toggle-lbl { color: #888; font-size: 12px; }
+#save-btn {
+  align-self: flex-start; padding: 5px 18px;
+  background: #4caf50; color: #0a0a0a; border: none;
+  font-family: monospace; font-size: 13px; font-weight: bold; cursor: pointer;
+}
+#save-btn:hover { background: #66bb6a; }
+#save-btn:disabled { background: #1a1a1a; color: #333; cursor: default; }
+#msg { font-size: 12px; color: #555; }
+</style>
+</head>
+<body>
+<div id="statusbar">
+  <span class="s-item" id="s-host">—</span>
+  <span class="s-item" id="s-rec" class="off">○ idle</span>
+  <span class="s-item" id="s-cam">cam0</span>
+  <span class="s-item" id="s-disk">—</span>
+  <span class="s-item" id="s-event">—</span>
+  <span class="s-gap"></span>
+  <nav>
+    <a href="/" class="tab">clips</a>
+    <a href="/preview" class="tab">preview</a>
+    <a href="/docs" class="tab">docs</a>
+    <a href="/config" class="tab">config</a>
+  </nav>
+</div>
+
+<main>
+  <h2>upload periódico</h2>
+
+  <div class="field">
+    <label>habilitado</label>
+    <label class="toggle">
+      <input type="checkbox" id="enabled">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="toggle-lbl" id="enabled-lbl">—</span>
+    </label>
+  </div>
+
+  <div class="field">
+    <label>intervalo (segundos)</label>
+    <div class="row">
+      <input type="number" id="interval" min="60" max="86400" step="60">
+      <span style="color:#444;font-size:12px" id="interval-hint"></span>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px">
+    <button id="save-btn">salvar</button>
+    <span id="msg"></span>
+  </div>
+</main>
+
+<script>
+document.getElementById('s-host').textContent=location.hostname;
+document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('href')===location.pathname)t.classList.add('active');});
+
+const enabledEl=document.getElementById('enabled');
+const enabledLbl=document.getElementById('enabled-lbl');
+const intervalEl=document.getElementById('interval');
+const intervalHint=document.getElementById('interval-hint');
+const saveBtn=document.getElementById('save-btn');
+const msg=document.getElementById('msg');
+
+enabledEl.addEventListener('change',()=>{enabledLbl.textContent=enabledEl.checked?'sim':'não';});
+intervalEl.addEventListener('input',()=>{
+  const s=parseInt(intervalEl.value);
+  if(!isNaN(s)&&s>0)intervalHint.textContent=s>=3600?`${(s/3600).toFixed(1)}h`:s>=60?`${Math.floor(s/60)}min`:`${s}s`;
+  else intervalHint.textContent='';
+});
+
+async function loadConfig(){
+  try{
+    const r=await fetch('/api/config');if(!r.ok)return;
+    const d=await r.json();
+    enabledEl.checked=d.periodic_upload_enabled;
+    enabledLbl.textContent=d.periodic_upload_enabled?'sim':'não';
+    intervalEl.value=d.periodic_upload_interval_s;
+    intervalEl.dispatchEvent(new Event('input'));
+  }catch{}
+}
+loadConfig();
+
+saveBtn.addEventListener('click',async()=>{
+  const s=parseInt(intervalEl.value);
+  if(isNaN(s)||s<60||s>86400){msg.textContent='intervalo: 60–86400s';return;}
+  saveBtn.disabled=true; msg.textContent='salvando…';
+  try{
+    const r=await fetch('/api/config',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({periodic_upload_enabled:enabledEl.checked,periodic_upload_interval_s:s})
+    });
+    msg.textContent=r.ok?'salvo':'erro '+r.status;
+  }catch{msg.textContent='erro de rede';}
+  finally{saveBtn.disabled=false;}
+});
+
+async function pollMetrics(){
+  try{
+    const r=await fetch('/api/metrics');if(!r.ok)return;const m=await r.json();
+    const el=document.getElementById('s-rec');el.textContent=m.recording?'● REC':'○ idle';el.className=m.recording?'on':'off';
+    const gb=n=>(n/1e9).toFixed(0);
+    document.getElementById('s-disk').textContent=`${gb(m.disk_used_bytes)} GB / ${gb(m.disk_total_bytes)} GB`;
+    if(m.last_event_ts){const d=new Date(m.last_event_ts*1000);const t=d.getUTCHours().toString().padStart(2,'0')+'h'+d.getUTCMinutes().toString().padStart(2,'0');document.getElementById('s-event').textContent=`último: ${t}${m.last_event_label?' '+m.last_event_label:''}`;}
+  }catch{}
+}
+pollMetrics();setInterval(pollMetrics,10000);
+</script>
+</body>
+</html>

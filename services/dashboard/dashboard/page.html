@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>orwell</title>
+<title>orwell · clips</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; }
@@ -13,28 +13,37 @@ body {
   display: flex; flex-direction: column;
 }
 
-/* ── status bar ────────────────────────────────────────────────────── */
+/* ── status + nav ──────────────────────────────────────────────────── */
 #statusbar {
-  display: flex; align-items: center; flex-shrink: 0;
+  display: flex; align-items: stretch; flex-shrink: 0;
   height: 34px; background: #111; border-bottom: 1px solid #1e1e1e;
-  padding: 0 14px; position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 10;
 }
-#statusbar .item {
+.s-item {
+  display: flex; align-items: center;
   padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap;
 }
-#statusbar .item:first-child { padding-left: 0; }
 #s-host  { color: #555; }
 #s-rec   { font-weight: bold; }
 #s-rec.on  { color: #4caf50; }
 #s-rec.off { color: #444; }
 #s-disk  { color: #777; }
 #s-event { color: #555; }
+.s-gap   { flex: 1; }
+nav { display: flex; }
+nav a {
+  display: flex; align-items: center; padding: 0 14px;
+  color: #3a3a3a; text-decoration: none; border-left: 1px solid #1e1e1e;
+  font-size: 12px; letter-spacing: .02em;
+}
+nav a:hover  { color: #888; background: #161616; }
+nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
-/* ── live preview ──────────────────────────────────────────────────── */
+/* ── preview ───────────────────────────────────────────────────────── */
 #preview-wrap {
   background: #000; flex-shrink: 0;
-  height: calc(100vh - 34px - 92px - 40px); /* viewport minus statusbar, tl+controls */
-  min-height: 200px;
+  height: calc(100vh - 34px - 86px - 38px);
+  min-height: 180px;
 }
 #preview-frame { width: 100%; height: 100%; border: none; display: block; }
 
@@ -89,32 +98,23 @@ body {
 }
 #btn-dl:hover { background: #66bb6a; }
 #btn-dl.off   { background: #1a1a1a; color: #333; pointer-events: none; }
-
-/* ── routes reference ──────────────────────────────────────────────── */
-#routes {
-  border-top: 1px solid #1a1a1a; padding: 18px 14px 32px;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.route {
-  display: grid; grid-template-columns: 34px 1fr;
-  gap: 0 10px; align-items: baseline; padding: 3px 0;
-  border-bottom: 1px solid #141414;
-}
-.route:last-child { border-bottom: none; }
-.method { color: #4caf50; font-size: 11px; }
-.path   { color: #888; }
-.path em { color: #555; font-style: normal; }
-.desc   { grid-column: 2; color: #3a3a3a; font-size: 11px; margin-top: 1px; }
 </style>
 </head>
 <body>
 
 <div id="statusbar">
-  <span class="item" id="s-host">—</span>
-  <span class="item" id="s-rec" class="off">○ idle</span>
-  <span class="item" id="s-cam">cam0</span>
-  <span class="item" id="s-disk">—</span>
-  <span class="item" id="s-event">—</span>
+  <span class="s-item" id="s-host">—</span>
+  <span class="s-item" id="s-rec" class="off">○ idle</span>
+  <span class="s-item" id="s-cam">cam0</span>
+  <span class="s-item" id="s-disk">—</span>
+  <span class="s-item" id="s-event">—</span>
+  <span class="s-gap"></span>
+  <nav>
+    <a href="/" class="tab">clips</a>
+    <a href="/preview" class="tab">preview</a>
+    <a href="/docs" class="tab">docs</a>
+    <a href="/config" class="tab">config</a>
+  </nav>
 </div>
 
 <div id="preview-wrap">
@@ -149,194 +149,87 @@ body {
   <a id="btn-dl" class="off" href="#" download>↓ baixar clipe</a>
 </div>
 
-<div id="routes">
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/clips<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
-    <span class="desc">→ MP4 do intervalo (stream copy)</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/range<em>?camera=0</em></span>
-    <span class="desc">→ {first, last} — janela retida no disco</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/cameras</span>
-    <span class="desc">→ ["0", "1", …]</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/segments<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
-    <span class="desc">→ lista de paths dos segmentos</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/events<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
-    <span class="desc">→ eventos de IA no intervalo</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/events/<em>{event_id}</em>/clip</span>
-    <span class="desc">→ MP4 do evento (clip.mp4 publicado pelo recorder)</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/metrics</span>
-    <span class="desc">→ {disk_used_bytes, disk_total_bytes, recording, last_event_ts, last_event_label}</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/preview/<em>{cam}</em>/index.m3u8</span>
-    <span class="desc">→ HLS stream ao vivo via MediaMTX</span>
-  </div>
-  <div class="route">
-    <span class="method">GET</span>
-    <span class="path">/api/healthz</span>
-    <span class="desc">→ {"status":"ok"}</span>
-  </div>
-</div>
-
 <script>
 const CAM = '0';
+let T0=null,T1=null,S=null,E=null,drag=null;
+const iso   = ts => new Date(ts*1000).toISOString().replace('.000','');
+const epoch = s  => Date.parse(s)/1000;
+const pct   = ts => T1===T0?0:Math.max(0,Math.min(1,(ts-T0)/(T1-T0)));
+const fromP = p  => T0+p*(T1-T0);
+const hhmm  = ts => { const d=new Date(ts*1000); return d.getUTCHours().toString().padStart(2,'0')+':'+d.getUTCMinutes().toString().padStart(2,'0'); };
+const tlTrack=document.getElementById('tl-track'),tlSel=document.getElementById('tl-sel');
+const hS=document.getElementById('h-s'),hE=document.getElementById('h-e');
+const inS=document.getElementById('in-s'),inE=document.getElementById('in-e');
+const btnDl=document.getElementById('btn-dl'),dlDur=document.getElementById('dl-dur');
 
-// ── state ──────────────────────────────────────────────────────────────────
-let T0 = null, T1 = null;
-let S = null, E = null;
-
-// ── helpers ────────────────────────────────────────────────────────────────
-const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
-const epoch = s  => Date.parse(s) / 1000;
-const pct   = ts => T1 === T0 ? 0 : Math.max(0, Math.min(1, (ts - T0) / (T1 - T0)));
-const fromP = p  => T0 + p * (T1 - T0);
-const hhmm  = ts => {
-  const d = new Date(ts * 1000);
-  return d.getUTCHours().toString().padStart(2,'0') + ':' +
-         d.getUTCMinutes().toString().padStart(2,'0');
-};
-
-// ── DOM ────────────────────────────────────────────────────────────────────
-const tlTrack = document.getElementById('tl-track');
-const tlSel   = document.getElementById('tl-sel');
-const hS      = document.getElementById('h-s');
-const hE      = document.getElementById('h-e');
-const inS     = document.getElementById('in-s');
-const inE     = document.getElementById('in-e');
-const btnDl   = document.getElementById('btn-dl');
-const dlDur   = document.getElementById('dl-dur');
-
-// ── render ─────────────────────────────────────────────────────────────────
-function render() {
-  if (!T0) return;
-  document.getElementById('tl-first').textContent = hhmm(T0);
-  document.getElementById('tl-last').textContent  = hhmm(T1);
-  if (!S || !E) return;
-  const l = pct(S), r = pct(E);
-  tlSel.style.left  = (l * 100) + '%';
-  tlSel.style.width = ((r - l) * 100) + '%';
-  hS.style.left = (l * 100) + '%';
-  hE.style.left = (r * 100) + '%';
+function render(){
+  if(!T0)return;
+  document.getElementById('tl-first').textContent=hhmm(T0);
+  document.getElementById('tl-last').textContent=hhmm(T1);
+  if(!S||!E)return;
+  const l=pct(S),r=pct(E);
+  tlSel.style.left=(l*100)+'%'; tlSel.style.width=((r-l)*100)+'%';
+  hS.style.left=(l*100)+'%'; hE.style.left=(r*100)+'%';
 }
-
-function updateDl() {
-  if (!S || !E || E <= S) {
-    btnDl.className = 'off'; btnDl.href = '#'; dlDur.textContent = '';
-    return;
-  }
-  btnDl.className = '';
-  btnDl.href = `/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
-  const dur = Math.round(E - S);
-  dlDur.textContent = dur >= 60 ? `${Math.floor(dur/60)}m${dur%60}s` : `${dur}s`;
+function updateDl(){
+  if(!S||!E||E<=S){btnDl.className='off';btnDl.href='#';dlDur.textContent='';return;}
+  btnDl.className='';
+  btnDl.href=`/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
+  const dur=Math.round(E-S);
+  dlDur.textContent=dur>=60?`${Math.floor(dur/60)}m${dur%60}s`:`${dur}s`;
 }
+function setSel(s,e){S=s;E=e;inS.value=iso(S);inE.value=iso(E);render();updateDl();}
 
-function setSel(s, e) {
-  S = s; E = e;
-  inS.value = iso(S);
-  inE.value = iso(E);
-  render();
-  updateDl();
+async function loadRange(){
+  try{
+    const r=await fetch(`/api/range?camera=${CAM}`);if(!r.ok)return;
+    const d=await r.json();if(!d.first||!d.last)return;
+    T0=epoch(d.first);T1=epoch(d.last);
+    if(!S)setSel(Math.max(T0,T1-60),T1);else render();
+  }catch{}
 }
+loadRange(); setInterval(loadRange,15000);
 
-// ── range ──────────────────────────────────────────────────────────────────
-async function loadRange() {
-  try {
-    const r = await fetch(`/api/range?camera=${CAM}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    if (!d.first || !d.last) return;
-    T0 = epoch(d.first);
-    T1 = epoch(d.last);
-    if (!S) setSel(Math.max(T0, T1 - 60), T1);
-    else    render();
-  } catch {}
-}
-loadRange();
-setInterval(loadRange, 15000);
+function trackPct(cx){const r=tlTrack.getBoundingClientRect();return Math.max(0,Math.min(1,(cx-r.left)/r.width));}
+hS.addEventListener('mousedown',e=>{drag='s';e.preventDefault();});
+hE.addEventListener('mousedown',e=>{drag='e';e.preventDefault();});
+document.addEventListener('mousemove',e=>{
+  if(!drag||!T0)return;
+  const ts=fromP(trackPct(e.clientX));
+  if(drag==='s')setSel(Math.min(ts,E-1),E);else setSel(S,Math.max(ts,S+1));
+});
+document.addEventListener('mouseup',()=>{drag=null;});
+tlTrack.addEventListener('click',e=>{
+  if(!T0||drag)return;
+  const ts=fromP(trackPct(e.clientX));
+  setSel(Math.max(T0,ts-30),Math.min(T1,ts+30));
+});
+inS.addEventListener('change',()=>{const ts=epoch(inS.value);if(!isNaN(ts))setSel(ts,E);});
+inE.addEventListener('change',()=>{const ts=epoch(inE.value);if(!isNaN(ts))setSel(S,ts);});
+btnDl.addEventListener('click',e=>{
+  if(btnDl.classList.contains('off')){e.preventDefault();return;}
+  dlDur.textContent='gerando…'; setTimeout(updateDl,3000);
+});
 
-// ── metrics ────────────────────────────────────────────────────────────────
-document.getElementById('s-host').textContent = location.hostname;
-
-async function pollMetrics() {
-  try {
-    const r = await fetch('/api/metrics');
-    if (!r.ok) return;
-    const m = await r.json();
-    const el = document.getElementById('s-rec');
-    el.textContent = m.recording ? '● REC' : '○ idle';
-    el.className   = m.recording ? 'on' : 'off';
-    const gb = n => (n / 1e9).toFixed(0);
-    document.getElementById('s-disk').textContent =
-      `${gb(m.disk_used_bytes)} GB / ${gb(m.disk_total_bytes)} GB`;
-    if (m.last_event_ts) {
-      const d = new Date(m.last_event_ts * 1000);
-      const t = d.getUTCHours().toString().padStart(2,'0') + 'h' +
-                d.getUTCMinutes().toString().padStart(2,'0');
-      document.getElementById('s-event').textContent =
-        `último: ${t}${m.last_event_label ? ' ' + m.last_event_label : ''}`;
+// ── shared status bar ──────────────────────────────────────────────────────
+document.getElementById('s-host').textContent=location.hostname;
+document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('href')===location.pathname)t.classList.add('active');});
+async function pollMetrics(){
+  try{
+    const r=await fetch('/api/metrics');if(!r.ok)return;
+    const m=await r.json();
+    const el=document.getElementById('s-rec');
+    el.textContent=m.recording?'● REC':'○ idle'; el.className=m.recording?'on':'off';
+    const gb=n=>(n/1e9).toFixed(0);
+    document.getElementById('s-disk').textContent=`${gb(m.disk_used_bytes)} GB / ${gb(m.disk_total_bytes)} GB`;
+    if(m.last_event_ts){
+      const d=new Date(m.last_event_ts*1000);
+      const t=d.getUTCHours().toString().padStart(2,'0')+'h'+d.getUTCMinutes().toString().padStart(2,'0');
+      document.getElementById('s-event').textContent=`último: ${t}${m.last_event_label?' '+m.last_event_label:''}`;
     }
-  } catch {}
+  }catch{}
 }
-pollMetrics();
-setInterval(pollMetrics, 10000);
-
-// ── drag ───────────────────────────────────────────────────────────────────
-let drag = null;
-
-function trackPct(clientX) {
-  const r = tlTrack.getBoundingClientRect();
-  return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-}
-
-hS.addEventListener('mousedown', e => { drag = 's'; e.preventDefault(); });
-hE.addEventListener('mousedown', e => { drag = 'e'; e.preventDefault(); });
-
-document.addEventListener('mousemove', e => {
-  if (!drag || !T0) return;
-  const ts = fromP(trackPct(e.clientX));
-  if (drag === 's') setSel(Math.min(ts, E - 1), E);
-  else              setSel(S, Math.max(ts, S + 1));
-});
-document.addEventListener('mouseup', () => { drag = null; });
-
-tlTrack.addEventListener('click', e => {
-  if (!T0 || drag) return;
-  const ts = fromP(trackPct(e.clientX));
-  setSel(Math.max(T0, ts - 30), Math.min(T1, ts + 30));
-});
-
-// ── inputs ─────────────────────────────────────────────────────────────────
-inS.addEventListener('change', () => {
-  const ts = epoch(inS.value); if (!isNaN(ts)) setSel(ts, E);
-});
-inE.addEventListener('change', () => {
-  const ts = epoch(inE.value); if (!isNaN(ts)) setSel(S, ts);
-});
-
-btnDl.addEventListener('click', e => {
-  if (btnDl.classList.contains('off')) { e.preventDefault(); return; }
-  dlDur.textContent = 'gerando…';
-  setTimeout(updateDl, 3000);
-});
+pollMetrics(); setInterval(pollMetrics,10000);
 </script>
 </body>
 </html>

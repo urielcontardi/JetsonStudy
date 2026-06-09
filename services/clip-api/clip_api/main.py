@@ -27,7 +27,12 @@ class ConfigPatch(BaseModel):
 
 
 def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> FastAPI:
-    app = FastAPI(title="Orwell Clip API")
+    app = FastAPI(
+        title="Orwell Clip API",
+        openapi_url="/openapi.json",
+        docs_url="/docs",
+        redoc_url=None,
+    )
     index = SegmentIndex(index_db_path())
     event_index = EventIndex(index_db_path())
     ddir = data_dir()
