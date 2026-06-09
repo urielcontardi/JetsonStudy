@@ -6,30 +6,39 @@
 <title>orwell</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; background: #0d0d0d; color: #b0b0b0; font-family: monospace; font-size: 13px; }
-body { display: flex; flex-direction: column; }
-
-#statusbar {
-  display: flex; align-items: center;
-  height: 34px; flex-shrink: 0;
-  background: #111; border-bottom: 1px solid #1e1e1e;
-  padding: 0 14px;
+html { height: 100%; }
+body {
+  min-height: 100%; background: #0d0d0d; color: #b0b0b0;
+  font-family: monospace; font-size: 13px;
+  display: flex; flex-direction: column;
 }
-#statusbar .item { padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap; }
+
+/* ── status bar ────────────────────────────────────────────────────── */
+#statusbar {
+  display: flex; align-items: center; flex-shrink: 0;
+  height: 34px; background: #111; border-bottom: 1px solid #1e1e1e;
+  padding: 0 14px; position: sticky; top: 0; z-index: 10;
+}
+#statusbar .item {
+  padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap;
+}
 #statusbar .item:first-child { padding-left: 0; }
-#s-host { color: #555; }
-#s-rec { font-weight: bold; }
+#s-host  { color: #555; }
+#s-rec   { font-weight: bold; }
 #s-rec.on  { color: #4caf50; }
 #s-rec.off { color: #444; }
-#s-disk { color: #777; }
+#s-disk  { color: #777; }
 #s-event { color: #555; }
 
-#player-wrap {
-  flex: 1; min-height: 0; background: #000;
-  display: flex; align-items: center; justify-content: center;
+/* ── live preview ──────────────────────────────────────────────────── */
+#preview-wrap {
+  background: #000; flex-shrink: 0;
+  height: calc(100vh - 34px - 92px - 40px); /* viewport minus statusbar, tl+controls */
+  min-height: 200px;
 }
-#player { width: 100%; height: 100%; display: block; }
+#preview-frame { width: 100%; height: 100%; border: none; display: block; }
 
+/* ── timeline ──────────────────────────────────────────────────────── */
 #timeline-section {
   flex-shrink: 0; background: #111; border-top: 1px solid #1e1e1e;
   padding: 10px 14px 6px;
@@ -47,8 +56,7 @@ body { display: flex; flex-direction: column; }
 }
 .tl-handle {
   position: absolute; top: -4px; bottom: -4px; width: 2px;
-  background: #4caf50; cursor: ew-resize; transform: translateX(-50%);
-  z-index: 2;
+  background: #4caf50; cursor: ew-resize; transform: translateX(-50%); z-index: 2;
 }
 .tl-handle::after {
   content: ''; position: absolute; top: 50%; left: 50%;
@@ -60,13 +68,13 @@ body { display: flex; flex-direction: column; }
   margin-top: 3px; color: #333; font-size: 11px;
 }
 
+/* ── clip controls ─────────────────────────────────────────────────── */
 #controls {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   padding: 8px 14px; background: #0d0d0d; border-top: 1px solid #161616;
-  flex-shrink: 0;
 }
 .ts-wrap { display: flex; align-items: center; gap: 6px; }
-.ts-lbl { color: #444; }
+.ts-lbl  { color: #444; }
 .ts-in {
   background: #111; border: 1px solid #252525; color: #999;
   padding: 3px 7px; font-family: monospace; font-size: 12px; width: 178px;
@@ -74,13 +82,29 @@ body { display: flex; flex-direction: column; }
 .ts-in:focus { outline: none; border-color: #4caf50; color: #c8c8c8; }
 #dl-dur { color: #444; font-size: 12px; min-width: 44px; }
 #btn-dl {
-  margin-left: auto;
-  padding: 4px 16px; background: #4caf50; color: #0a0a0a;
+  margin-left: auto; padding: 4px 16px;
+  background: #4caf50; color: #0a0a0a;
   border: none; font-family: monospace; font-size: 13px; font-weight: bold;
   cursor: pointer; text-decoration: none; display: inline-block;
 }
 #btn-dl:hover { background: #66bb6a; }
-#btn-dl.off { background: #1a1a1a; color: #333; pointer-events: none; }
+#btn-dl.off   { background: #1a1a1a; color: #333; pointer-events: none; }
+
+/* ── routes reference ──────────────────────────────────────────────── */
+#routes {
+  border-top: 1px solid #1a1a1a; padding: 18px 14px 32px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.route {
+  display: grid; grid-template-columns: 34px 1fr;
+  gap: 0 10px; align-items: baseline; padding: 3px 0;
+  border-bottom: 1px solid #141414;
+}
+.route:last-child { border-bottom: none; }
+.method { color: #4caf50; font-size: 11px; }
+.path   { color: #888; }
+.path em { color: #555; font-style: normal; }
+.desc   { grid-column: 2; color: #3a3a3a; font-size: 11px; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -93,8 +117,8 @@ body { display: flex; flex-direction: column; }
   <span class="item" id="s-event">—</span>
 </div>
 
-<div id="player-wrap">
-  <video id="player" controls muted playsinline autoplay></video>
+<div id="preview-wrap">
+  <iframe id="preview-frame" src="/preview/cam0" allowfullscreen></iframe>
 </div>
 
 <div id="timeline-section">
@@ -125,24 +149,60 @@ body { display: flex; flex-direction: column; }
   <a id="btn-dl" class="off" href="#" download>↓ baixar clipe</a>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<div id="routes">
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/clips<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
+    <span class="desc">→ MP4 do intervalo (stream copy)</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/range<em>?camera=0</em></span>
+    <span class="desc">→ {first, last} — janela retida no disco</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/cameras</span>
+    <span class="desc">→ ["0", "1", …]</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/segments<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
+    <span class="desc">→ lista de paths dos segmentos</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/events<em>?camera=0&amp;start=ISO&amp;end=ISO</em></span>
+    <span class="desc">→ eventos de IA no intervalo</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/events/<em>{event_id}</em>/clip</span>
+    <span class="desc">→ MP4 do evento (clip.mp4 publicado pelo recorder)</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/metrics</span>
+    <span class="desc">→ {disk_used_bytes, disk_total_bytes, recording, last_event_ts, last_event_label}</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/preview/<em>{cam}</em>/index.m3u8</span>
+    <span class="desc">→ HLS stream ao vivo via MediaMTX</span>
+  </div>
+  <div class="route">
+    <span class="method">GET</span>
+    <span class="path">/api/healthz</span>
+    <span class="desc">→ {"status":"ok"}</span>
+  </div>
+</div>
+
 <script>
 const CAM = '0';
-const HLS_URL = `/preview/cam${CAM}/index.m3u8`;
-
-// ── player ─────────────────────────────────────────────────────────────────
-const vid = document.getElementById('player');
-if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-  const hls = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
-  hls.loadSource(HLS_URL);
-  hls.attachMedia(vid);
-} else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-  vid.src = HLS_URL;
-}
 
 // ── state ──────────────────────────────────────────────────────────────────
-let T0 = null, T1 = null;  // recorded range (epoch s)
-let S = null, E = null;    // selection (epoch s)
+let T0 = null, T1 = null;
+let S = null, E = null;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
@@ -155,7 +215,7 @@ const hhmm  = ts => {
          d.getUTCMinutes().toString().padStart(2,'0');
 };
 
-// ── DOM refs ───────────────────────────────────────────────────────────────
+// ── DOM ────────────────────────────────────────────────────────────────────
 const tlTrack = document.getElementById('tl-track');
 const tlSel   = document.getElementById('tl-sel');
 const hS      = document.getElementById('h-s');
@@ -186,9 +246,7 @@ function updateDl() {
   btnDl.className = '';
   btnDl.href = `/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
   const dur = Math.round(E - S);
-  dlDur.textContent = dur >= 60
-    ? `${Math.floor(dur / 60)}m${dur % 60}s`
-    : `${dur}s`;
+  dlDur.textContent = dur >= 60 ? `${Math.floor(dur/60)}m${dur%60}s` : `${dur}s`;
 }
 
 function setSel(s, e) {
@@ -260,21 +318,18 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseup', () => { drag = null; });
 
-// click → centraliza janela de 1 min
 tlTrack.addEventListener('click', e => {
   if (!T0 || drag) return;
   const ts = fromP(trackPct(e.clientX));
   setSel(Math.max(T0, ts - 30), Math.min(T1, ts + 30));
 });
 
-// ── inputs manuais ─────────────────────────────────────────────────────────
+// ── inputs ─────────────────────────────────────────────────────────────────
 inS.addEventListener('change', () => {
-  const ts = epoch(inS.value);
-  if (!isNaN(ts)) setSel(ts, E);
+  const ts = epoch(inS.value); if (!isNaN(ts)) setSel(ts, E);
 });
 inE.addEventListener('change', () => {
-  const ts = epoch(inE.value);
-  if (!isNaN(ts)) setSel(S, ts);
+  const ts = epoch(inE.value); if (!isNaN(ts)) setSel(S, ts);
 });
 
 btnDl.addEventListener('click', e => {
