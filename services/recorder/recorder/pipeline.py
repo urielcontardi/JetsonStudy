@@ -97,7 +97,7 @@ def preview_branch(preview: PreviewConfig, camera_id: str, profile: CaptureProfi
         )
     else:
         encode = ""
-    return f"{encode}rtspclientsink location={url} protocols=tcp"
+    return f"{encode}rtspclientsink location={url} protocols=tcp retry-delay=5"
 
 
 def max_size_time_ns(profile: CaptureProfile) -> int:
