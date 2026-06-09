@@ -18,7 +18,7 @@ jetson: "Jetson Orin NX" {
   style.stroke: "#343a40"
   direction: right
 
-  recorder: "🐳 recorder\n\nCaptura câmeras via GStreamer.\nGrava DVR contínuo em fMP4.\nBuffer circular no tmpfs (60s).\nAI ⚠ disabled · Worker ⚠ disabled" {
+  recorder: "🐳 recorder  [profile: jetson]\n\nCaptura câmeras via Argus/GStreamer.\nGrava DVR contínuo em fMP4.\nBuffer circular no tmpfs (60s).\nFlush periódico → events/ (independente do conveyor)\nAI ⚠ disabled" {
     style.fill: "#dbe4ff"
     style.stroke: "#4263eb"
   }
@@ -39,17 +39,23 @@ jetson: "Jetson Orin NX" {
     style.stroke: "#2f9e44"
   }
 
+  uploader: "🐳 uploader\n\nLê EventIndex (SQLite).\nEnvia via VSTP → Conveyor.\n⚠ idle enquanto conveyor.enabled=false" {
+    style.fill: "#fff5f5"
+    style.stroke: "#e03131"
+    style.stroke-dash: 5
+  }
+
   dashboard: "🐳 dashboard  :8080 interno\n\nInterface web para\nclips e eventos" {
     style.fill: "#d3f9d8"
     style.stroke: "#2f9e44"
   }
 
-  gateway: "🐳 gateway  :80 público\n\n/, /api e /preview" {
+  gateway: "🐳 gateway  :80 público\n\n/, /api" {
     style.fill: "#e7f5ff"
     style.stroke: "#1971c2"
   }
 
-  preview: "🐳 preview\n\nStream ao vivo RTSP/HLS/WebRTC\ndas câmeras para monitorar.\n:8554 · :8888 · :8889" {
+  preview: "🐳 preview  (MediaMTX)\n\nRecebe RTSP do recorder.\nReexpõe HLS/WebRTC.\n:8554 · :8888 · :8889" {
     style.fill: "#f8f9fa"
     style.stroke: "#adb5bd"
     style.stroke-dash: 5
@@ -77,41 +83,43 @@ registerapi: "omni-ops\nregister-api" {
 }
 
 # ─────────────────────────────────────────────────────────────────────
-# Fluxo principal ──────────────────────────────────────────────────────
+# Fluxo principal
 # ─────────────────────────────────────────────────────────────────────
-cameras -> jetson.recorder: GMSL2 via Argus
+cameras -> jetson.recorder: "GMSL2 via Argus"
 jetson.recorder -> jetson.storage: "grava fMP4\nindexas\nbuffer"
 jetson.storage -> jetson.clipapi: "serve clips\nquery"
 jetson.clipapi -> jetson.gateway: "/api"
 jetson.dashboard -> jetson.gateway: "/"
-jetson.preview -> jetson.gateway: "/preview (HLS)"
 jetson.gateway -> tailscale: :80
-operator -> tailscale: acesso remoto
+operator -> tailscale: "acesso remoto"
+
+# preview: recorder pusha via RTSP; operador acessa direto na :8888 (WebRTC)
+jetson.recorder -> jetson.preview: "RTSP push\n(via shm socket)" {
+  style.stroke-dash: 5
+  style.stroke: "#adb5bd"
+}
+jetson.preview -> tailscale: ":8888 WebRTC\n(direto, bypassa gateway)" {
+  style.stroke-dash: 5
+  style.stroke: "#adb5bd"
+}
 
 # ─────────────────────────────────────────────────────────────────────
-# Fluxo desabilitado ───────────────────────────────────────────────────
+# Fluxo desabilitado
 # ─────────────────────────────────────────────────────────────────────
-jetson.recorder -> conveyor: "⚠ VSTP\n(disabled)" {
+jetson.storage -> jetson.uploader: "lê events/\n+ EventIndex"
+jetson.uploader -> conveyor: "⚠ VSTP\n(disabled)" {
   style.stroke: "#e03131"
   style.stroke-dash: 5
 }
 
 # ─────────────────────────────────────────────────────────────────────
-# Dev / Provisioning ───────────────────────────────────────────────────
+# Dev / Provisioning
 # ─────────────────────────────────────────────────────────────────────
-cameras -> jetson.preview: "stream ao vivo" {
-  style.stroke-dash: 5
-  style.stroke: "#adb5bd"
-}
-jetson.preview -> tailscale: ":8554 · :8889" {
-  style.stroke-dash: 5
-  style.stroke: "#adb5bd"
-}
-operator -> registerapi: provision.sh {
+operator -> registerapi: "provision.sh" {
   style.stroke-dash: 5
   style.stroke: "#7048e8"
 }
-registerapi -> tailscale: auth_key {
+registerapi -> tailscale: "auth_key" {
   style.stroke-dash: 5
   style.stroke: "#7048e8"
 }

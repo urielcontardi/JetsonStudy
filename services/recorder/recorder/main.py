@@ -272,7 +272,7 @@ def main() -> None:
         events_dir=config.retention.events_dir,
         event_index=event_index,
         interval_s=config.conveyor.periodic_upload_interval_s,
-        enabled=config.conveyor.periodic_upload_enabled and config.conveyor.enabled,
+        enabled=config.conveyor.periodic_upload_enabled,
         segment_index=index,
     )
     flusher.start()
@@ -285,7 +285,7 @@ def main() -> None:
 
     def _on_config_change(new_cfg) -> None:
         flusher.update_config(
-            enabled=new_cfg.conveyor.periodic_upload_enabled and new_cfg.conveyor.enabled,
+            enabled=new_cfg.conveyor.periodic_upload_enabled,
             interval_s=new_cfg.conveyor.periodic_upload_interval_s,
         )
         print(

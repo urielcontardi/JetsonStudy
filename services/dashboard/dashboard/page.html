@@ -89,7 +89,7 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
 <script>
 const CLIP_API = "/api";
-const PREVIEW_BASE = "/preview";
+const PREVIEW_BASE = `http://${location.hostname}:8888`;
 const CAM = '0';
 let S = null, E = null;
 const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
