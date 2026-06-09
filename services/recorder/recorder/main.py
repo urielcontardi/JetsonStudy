@@ -266,6 +266,19 @@ def main() -> None:
 
     signal.signal(signal.SIGTERM, _stop_main_loop)
     signal.signal(signal.SIGINT, _stop_main_loop)
+
+    def _on_bus_message(bus, msg, _data):
+        if msg.type == Gst.MessageType.ERROR:
+            err, dbg = msg.parse_error()
+            print(f"recorder: pipeline ERROR — {err} ({dbg}); reiniciando", flush=True)
+            GLib.idle_add(loop.quit)
+        return True
+
+    for p in pipelines:
+        bus = p.get_bus()
+        bus.add_signal_watch()
+        bus.connect("message", _on_bus_message, None)
+
     try:
         loop.run()
     finally:
