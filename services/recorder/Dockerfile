@@ -8,26 +8,15 @@
 ARG DEEPSTREAM_IMAGE=nvcr.io/nvidia/deepstream:7.1-samples-multiarch
 FROM ${DEEPSTREAM_IMAGE}
 
-# Mantém downloads e índices entre rebuilds no mesmo builder. Os timeouts evitam que um mirror
-# NVIDIA indisponível bloqueie por minutos a instalação de pacotes vindos dos repositórios Ubuntu.
-RUN rm -f /etc/apt/apt.conf.d/docker-clean \
-    && printf 'Binary::apt::APT::Keep-Downloaded-Packages "true";\n' \
-      > /etc/apt/apt.conf.d/keep-cache
-
-# Esta camada muda apenas quando a imagem base ou a lista de dependências de sistema mudar.
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get -o Acquire::Retries=1 \
-      -o Acquire::http::Timeout=15 \
-      -o Acquire::https::Timeout=15 \
-      update \
-    && apt-get -o Acquire::Retries=1 \
-      -o Acquire::http::Timeout=15 \
-      -o Acquire::https::Timeout=15 \
-      install -y --no-install-recommends \
-    ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
+# Timeouts curtos evitam que um mirror NVIDIA indisponível bloqueie o apt por minutos;
+# 3 retries cobrem hash-mismatch transitório de CDN.
+RUN apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update \
+    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 \
+       install -y --no-install-recommends \
+       ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
     && ffmpeg -version \
-    && ffprobe -version
+    && ffprobe -version \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
