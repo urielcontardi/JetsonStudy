@@ -19,10 +19,6 @@ def create_app() -> FastAPI:
     def index():
         return _page("page.html")
 
-    @app.get("/preview", response_class=HTMLResponse)
-    def preview():
-        return _page("preview.html")
-
     @app.get("/config", response_class=HTMLResponse)
     def config():
         return _page("config.html")
