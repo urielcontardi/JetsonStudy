@@ -176,6 +176,26 @@ def create_app(extract_fn=extract_clip, extract_event_fn=extract_event_clip) -> 
     def upload_stats():
         return event_index.upload_stats()
 
+    @app.get("/metrics")
+    def metrics():
+        import shutil
+        import time
+        usage = shutil.disk_usage(str(ddir))
+        now = time.time()
+        recording = index._conn.execute(
+            "SELECT 1 FROM segments WHERE t_end > ? LIMIT 1", (now - 15,)
+        ).fetchone() is not None
+        last = event_index._conn.execute(
+            "SELECT t_evento, label FROM events ORDER BY t_evento DESC LIMIT 1"
+        ).fetchone()
+        return {
+            "disk_used_bytes": usage.used,
+            "disk_total_bytes": usage.total,
+            "recording": recording,
+            "last_event_ts": last[0] if last else None,
+            "last_event_label": last[1] if last else None,
+        }
+
     return app
 
 
