@@ -8,14 +8,19 @@
 ARG DEEPSTREAM_IMAGE=nvcr.io/nvidia/deepstream:7.1-samples-multiarch
 FROM ${DEEPSTREAM_IMAGE}
 
-# Timeouts curtos evitam que um mirror NVIDIA indisponível bloqueie o apt por minutos;
-# 3 retries cobrem hash-mismatch transitório de CDN.
-RUN apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update \
-    && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 \
-       install -y --no-install-recommends \
-       ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
-    && ffmpeg -version \
-    && ffprobe -version \
+# Loop de retry cobre hash-mismatch transitório de CDN e mirrors NVIDIA indisponíveis.
+# Limpa /var/lib/apt/lists antes de cada tentativa para forçar re-download do índice.
+RUN for attempt in 1 2 3; do \
+      apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=20 update \
+      && apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=20 \
+         install -y --no-install-recommends \
+         ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
+      && ffmpeg -version && ffprobe -version \
+      && break; \
+      echo "apt attempt $attempt failed, retrying..."; \
+      rm -rf /var/lib/apt/lists/*; \
+      sleep 5; \
+    done \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
