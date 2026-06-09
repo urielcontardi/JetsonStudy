@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # Recorder — roda NO JETSON. Base = imagem DeepStream/L4T da NVIDIA (traz GStreamer + plugins NV).
 # Build context = repo root, NO PRÓPRIO JETSON (arm64/L4T):
 #   docker build -f services/recorder/Dockerfile -t orwell-recorder:dev .
@@ -6,10 +8,26 @@
 ARG DEEPSTREAM_IMAGE=nvcr.io/nvidia/deepstream:7.1-samples-multiarch
 FROM ${DEEPSTREAM_IMAGE}
 
-# python3-gi (gi.repository.Gst) costuma já existir na base L4T; garantimos mesmo assim.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Mantém downloads e índices entre rebuilds no mesmo builder. Os timeouts evitam que um mirror
+# NVIDIA indisponível bloqueie por minutos a instalação de pacotes vindos dos repositórios Ubuntu.
+RUN rm -f /etc/apt/apt.conf.d/docker-clean \
+    && printf 'Binary::apt::APT::Keep-Downloaded-Packages "true";\n' \
+      > /etc/apt/apt.conf.d/keep-cache
+
+# Esta camada muda apenas quando a imagem base ou a lista de dependências de sistema mudar.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get -o Acquire::Retries=1 \
+      -o Acquire::http::Timeout=15 \
+      -o Acquire::https::Timeout=15 \
+      update \
+    && apt-get -o Acquire::Retries=1 \
+      -o Acquire::http::Timeout=15 \
+      -o Acquire::https::Timeout=15 \
+      install -y --no-install-recommends \
     ffmpeg python3-pip python3-gi gir1.2-gstreamer-1.0 \
-    && rm -rf /var/lib/apt/lists/*
+    && ffmpeg -version \
+    && ffprobe -version
 
 WORKDIR /app
 
