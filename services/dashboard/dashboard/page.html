@@ -3,26 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>orwell · clips</title>
+<title>orwell</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
-body {
-  min-height: 100%; background: #0d0d0d; color: #b0b0b0;
-  font-family: monospace; font-size: 13px;
-  display: flex; flex-direction: column;
-}
+html, body { height: 100%; background: #0d0d0d; color: #b0b0b0; font-family: monospace; font-size: 13px; display: flex; flex-direction: column; }
 
-/* ── status + nav ──────────────────────────────────────────────────── */
 #statusbar {
   display: flex; align-items: stretch; flex-shrink: 0;
   height: 34px; background: #111; border-bottom: 1px solid #1e1e1e;
   position: sticky; top: 0; z-index: 10;
 }
-.s-item {
-  display: flex; align-items: center;
-  padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap;
-}
+.s-item { display: flex; align-items: center; padding: 0 12px; border-right: 1px solid #1e1e1e; white-space: nowrap; }
 #s-host  { color: #555; }
 #s-rec   { font-weight: bold; }
 #s-rec.on  { color: #4caf50; }
@@ -31,61 +22,24 @@ body {
 #s-event { color: #555; }
 .s-gap   { flex: 1; }
 nav { display: flex; }
-nav a {
-  display: flex; align-items: center; padding: 0 14px;
-  color: #3a3a3a; text-decoration: none; border-left: 1px solid #1e1e1e;
-  font-size: 12px; letter-spacing: .02em;
-}
+nav a { display: flex; align-items: center; padding: 0 14px; color: #3a3a3a; text-decoration: none; border-left: 1px solid #1e1e1e; font-size: 12px; }
 nav a:hover  { color: #888; background: #161616; }
 nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
-/* ── preview ───────────────────────────────────────────────────────── */
 #preview-wrap {
-  background: #000; flex-shrink: 0;
-  height: calc(100vh - 34px - 86px - 38px);
-  min-height: 180px;
+  flex: 1; min-height: 0; background: #000;
 }
 #preview-frame { width: 100%; height: 100%; border: none; display: block; }
 
-/* ── timeline ──────────────────────────────────────────────────────── */
-#timeline-section {
-  flex-shrink: 0; background: #111; border-top: 1px solid #1e1e1e;
-  padding: 10px 14px 6px;
-}
-#tl-outer { position: relative; height: 20px; cursor: crosshair; user-select: none; }
-#tl-track {
-  position: absolute; inset: 4px 0;
-  background: #1a1a1a; border: 1px solid #252525;
-}
-#tl-recorded { position: absolute; inset: 0; background: #1b2e22; }
-#tl-sel {
-  position: absolute; inset: 0;
-  background: rgba(76,175,80,.18);
-  border-left: 1px solid #4caf50; border-right: 1px solid #4caf50;
-}
-.tl-handle {
-  position: absolute; top: -4px; bottom: -4px; width: 2px;
-  background: #4caf50; cursor: ew-resize; transform: translateX(-50%); z-index: 2;
-}
-.tl-handle::after {
-  content: ''; position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%,-50%);
-  width: 8px; height: 8px; background: #4caf50; border-radius: 50%;
-}
-#tl-labels {
-  display: flex; justify-content: space-between;
-  margin-top: 3px; color: #333; font-size: 11px;
-}
-
-/* ── clip controls ─────────────────────────────────────────────────── */
-#controls {
-  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-  padding: 8px 14px; background: #0d0d0d; border-top: 1px solid #161616;
+#clip-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; background: #111; border-top: 1px solid #1e1e1e;
 }
 .ts-wrap { display: flex; align-items: center; gap: 6px; }
 .ts-lbl  { color: #444; }
 .ts-in {
-  background: #111; border: 1px solid #252525; color: #999;
+  background: #0d0d0d; border: 1px solid #252525; color: #999;
   padding: 3px 7px; font-family: monospace; font-size: 12px; width: 178px;
 }
 .ts-in:focus { outline: none; border-color: #4caf50; color: #c8c8c8; }
@@ -111,7 +65,6 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
   <span class="s-gap"></span>
   <nav>
     <a href="/" class="tab">clips</a>
-    <a href="/preview/cam0" class="tab">preview</a>
     <a href="/docs" class="tab">docs</a>
     <a href="/config" class="tab">config</a>
   </nav>
@@ -121,22 +74,7 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
   <iframe id="preview-frame" src="/preview/cam0" allowfullscreen></iframe>
 </div>
 
-<div id="timeline-section">
-  <div id="tl-outer">
-    <div id="tl-track">
-      <div id="tl-recorded"></div>
-      <div id="tl-sel"></div>
-    </div>
-    <div class="tl-handle" id="h-s"></div>
-    <div class="tl-handle" id="h-e"></div>
-  </div>
-  <div id="tl-labels">
-    <span id="tl-first">—</span>
-    <span id="tl-last">—</span>
-  </div>
-</div>
-
-<div id="controls">
+<div id="clip-bar">
   <div class="ts-wrap">
     <span class="ts-lbl">início</span>
     <input class="ts-in" id="in-s" type="text" spellcheck="false">
@@ -151,85 +89,76 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
 <script>
 const CAM = '0';
-let T0=null,T1=null,S=null,E=null,drag=null;
-const iso   = ts => new Date(ts*1000).toISOString().replace('.000','');
-const epoch = s  => Date.parse(s)/1000;
-const pct   = ts => T1===T0?0:Math.max(0,Math.min(1,(ts-T0)/(T1-T0)));
-const fromP = p  => T0+p*(T1-T0);
-const hhmm  = ts => { const d=new Date(ts*1000); return d.getUTCHours().toString().padStart(2,'0')+':'+d.getUTCMinutes().toString().padStart(2,'0'); };
-const tlTrack=document.getElementById('tl-track'),tlSel=document.getElementById('tl-sel');
-const hS=document.getElementById('h-s'),hE=document.getElementById('h-e');
-const inS=document.getElementById('in-s'),inE=document.getElementById('in-e');
-const btnDl=document.getElementById('btn-dl'),dlDur=document.getElementById('dl-dur');
+let S = null, E = null;
+const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
+const epoch = s  => Date.parse(s) / 1000;
 
-function render(){
-  if(!T0)return;
-  document.getElementById('tl-first').textContent=hhmm(T0);
-  document.getElementById('tl-last').textContent=hhmm(T1);
-  if(!S||!E)return;
-  const l=pct(S),r=pct(E);
-  tlSel.style.left=(l*100)+'%'; tlSel.style.width=((r-l)*100)+'%';
-  hS.style.left=(l*100)+'%'; hE.style.left=(r*100)+'%';
-}
-function updateDl(){
-  if(!S||!E||E<=S){btnDl.className='off';btnDl.href='#';dlDur.textContent='';return;}
-  btnDl.className='';
-  btnDl.href=`/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
-  const dur=Math.round(E-S);
-  dlDur.textContent=dur>=60?`${Math.floor(dur/60)}m${dur%60}s`:`${dur}s`;
-}
-function setSel(s,e){S=s;E=e;inS.value=iso(S);inE.value=iso(E);render();updateDl();}
+const inS   = document.getElementById('in-s');
+const inE   = document.getElementById('in-e');
+const btnDl = document.getElementById('btn-dl');
+const dlDur = document.getElementById('dl-dur');
 
-async function loadRange(){
-  try{
-    const r=await fetch(`/api/range?camera=${CAM}`);if(!r.ok)return;
-    const d=await r.json();if(!d.first||!d.last)return;
-    T0=epoch(d.first);T1=epoch(d.last);
-    if(!S)setSel(Math.max(T0,T1-60),T1);else render();
-  }catch{}
+function updateDl() {
+  if (!S || !E || E <= S) {
+    btnDl.className = 'off'; btnDl.href = '#'; dlDur.textContent = '';
+    return;
+  }
+  btnDl.className = '';
+  btnDl.href = `/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
+  const dur = Math.round(E - S);
+  dlDur.textContent = dur >= 60 ? `${Math.floor(dur/60)}m${dur%60}s` : `${dur}s`;
 }
-loadRange(); setInterval(loadRange,15000);
 
-function trackPct(cx){const r=tlTrack.getBoundingClientRect();return Math.max(0,Math.min(1,(cx-r.left)/r.width));}
-hS.addEventListener('mousedown',e=>{drag='s';e.preventDefault();});
-hE.addEventListener('mousedown',e=>{drag='e';e.preventDefault();});
-document.addEventListener('mousemove',e=>{
-  if(!drag||!T0)return;
-  const ts=fromP(trackPct(e.clientX));
-  if(drag==='s')setSel(Math.min(ts,E-1),E);else setSel(S,Math.max(ts,S+1));
-});
-document.addEventListener('mouseup',()=>{drag=null;});
-tlTrack.addEventListener('click',e=>{
-  if(!T0||drag)return;
-  const ts=fromP(trackPct(e.clientX));
-  setSel(Math.max(T0,ts-30),Math.min(T1,ts+30));
-});
-inS.addEventListener('change',()=>{const ts=epoch(inS.value);if(!isNaN(ts))setSel(ts,E);});
-inE.addEventListener('change',()=>{const ts=epoch(inE.value);if(!isNaN(ts))setSel(S,ts);});
-btnDl.addEventListener('click',e=>{
-  if(btnDl.classList.contains('off')){e.preventDefault();return;}
-  dlDur.textContent='gerando…'; setTimeout(updateDl,3000);
+function setSel(s, e) {
+  S = s; E = e;
+  inS.value = iso(S);
+  inE.value = iso(E);
+  updateDl();
+}
+
+async function loadRange() {
+  try {
+    const r = await fetch(`/api/range?camera=${CAM}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.first || !d.last) return;
+    const t1 = epoch(d.last);
+    const t0 = epoch(d.first);
+    if (!S) setSel(Math.max(t0, t1 - 60), t1);
+  } catch {}
+}
+loadRange();
+setInterval(loadRange, 30000);
+
+inS.addEventListener('change', () => { const ts = epoch(inS.value); if (!isNaN(ts)) { S = ts; updateDl(); } });
+inE.addEventListener('change', () => { const ts = epoch(inE.value); if (!isNaN(ts)) { E = ts; updateDl(); } });
+btnDl.addEventListener('click', e => {
+  if (btnDl.classList.contains('off')) { e.preventDefault(); return; }
+  dlDur.textContent = 'gerando…';
+  setTimeout(updateDl, 3000);
 });
 
-// ── shared status bar ──────────────────────────────────────────────────────
-document.getElementById('s-host').textContent=location.hostname;
-document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('href')===location.pathname)t.classList.add('active');});
-async function pollMetrics(){
-  try{
-    const r=await fetch('/api/metrics');if(!r.ok)return;
-    const m=await r.json();
-    const el=document.getElementById('s-rec');
-    el.textContent=m.recording?'● REC':'○ idle'; el.className=m.recording?'on':'off';
-    const gb=n=>(n/1e9).toFixed(0);
-    document.getElementById('s-disk').textContent=`${gb(m.disk_used_bytes)} GB / ${gb(m.disk_total_bytes)} GB`;
-    if(m.last_event_ts){
-      const d=new Date(m.last_event_ts*1000);
-      const t=d.getUTCHours().toString().padStart(2,'0')+'h'+d.getUTCMinutes().toString().padStart(2,'0');
-      document.getElementById('s-event').textContent=`último: ${t}${m.last_event_label?' '+m.last_event_label:''}`;
+// status bar
+document.getElementById('s-host').textContent = location.hostname;
+document.querySelectorAll('.tab').forEach(t => { if (t.getAttribute('href') === location.pathname) t.classList.add('active'); });
+
+async function pollMetrics() {
+  try {
+    const r = await fetch('/api/metrics'); if (!r.ok) return;
+    const m = await r.json();
+    const el = document.getElementById('s-rec');
+    el.textContent = m.recording ? '● REC' : '○ idle';
+    el.className   = m.recording ? 'on' : 'off';
+    const gb = n => (n / 1e9).toFixed(0);
+    document.getElementById('s-disk').textContent = `${gb(m.disk_used_bytes)} GB / ${gb(m.disk_total_bytes)} GB`;
+    if (m.last_event_ts) {
+      const d = new Date(m.last_event_ts * 1000);
+      const t = d.getUTCHours().toString().padStart(2,'0') + 'h' + d.getUTCMinutes().toString().padStart(2,'0');
+      document.getElementById('s-event').textContent = `último: ${t}${m.last_event_label ? ' ' + m.last_event_label : ''}`;
     }
-  }catch{}
+  } catch {}
 }
-pollMetrics(); setInterval(pollMetrics,10000);
+pollMetrics(); setInterval(pollMetrics, 10000);
 </script>
 </body>
 </html>
