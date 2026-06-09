@@ -12,7 +12,7 @@ capture:
   width: 1920
   height: 1080
   fps: 25
-  codec: h265
+  codec: h264
   encoder: hw              # NVENC — Orin NX
   gop_seconds: 1.0
   segment_seconds: 4.0

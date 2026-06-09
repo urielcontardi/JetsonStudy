@@ -22,13 +22,15 @@ cat >"${UNIT}" <<UNITEOF
 [Unit]
 Description=Orwell edge services (docker compose)
 Requires=docker.service
-After=docker.service network-online.target
+After=docker.service nvargus-daemon.service network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${REPO_ROOT}
+# Crash-loops de pipelines podem deixar o Argus recusando novas CaptureSessions.
+ExecStartPre=-/bin/systemctl restart nvargus-daemon.service
 # --profile jetson inclui o recorder (câmeras). Imagens devem ter sido buildadas antes
 # (DEPLOY.md). Em boots seguintes, 'up -d' apenas inicia os containers já existentes.
 ExecStart=${COMPOSE} --profile jetson up -d

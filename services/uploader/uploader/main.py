@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from pathlib import Path
 
 from orwell_shared.config import load_config
 from orwell_shared.conveyor_client import ConveyorClient
@@ -37,12 +38,18 @@ def main() -> None:
     sensor_ext_id = config.conveyor.sensor_ext_id or get_ext_id()
     logger.info("gateway_ext_id=%s sensor_ext_id=%s", gateway_ext_id, sensor_ext_id)
 
-    client = ConveyorClient(
-        host=config.conveyor.host,
-        port=config.conveyor.port,
-        gateway_ext_id=gateway_ext_id,
-        sensor_ext_id=sensor_ext_id,
-    )
+    while True:
+        try:
+            client = ConveyorClient(
+                host=config.conveyor.host,
+                port=config.conveyor.port,
+                gateway_ext_id=gateway_ext_id,
+                sensor_ext_id=sensor_ext_id,
+            )
+            break
+        except Exception:
+            logger.exception("falha ao conectar/autenticar no Conveyor; tentando novamente em 30s")
+            time.sleep(30)
     uploader = ConveyorUploader(client=client, sensor_ext_id=sensor_ext_id)
     event_index = EventIndex(db_path)
 
@@ -51,8 +58,10 @@ def main() -> None:
         uploader=uploader,
         upload_interval_s=config.conveyor.upload_interval_s,
         status_interval_s=config.conveyor.status_interval_s,
+        heartbeat_path="/tmp/orwell-uploader-heartbeat",
     )
     worker.start()
+    Path("/tmp/orwell-uploader-heartbeat").touch()
     logger.info(
         "UploadWorker iniciado (host=%s:%s, poll=%ss)",
         config.conveyor.host, config.conveyor.port, config.conveyor.upload_interval_s,

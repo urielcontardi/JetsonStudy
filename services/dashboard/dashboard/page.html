@@ -88,6 +88,8 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 </div>
 
 <script>
+const CLIP_API = "/api";
+const PREVIEW_BASE = "/preview";
 const CAM = '0';
 let S = null, E = null;
 const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
@@ -104,7 +106,7 @@ function updateDl() {
     return;
   }
   btnDl.className = '';
-  btnDl.href = `/api/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
+  btnDl.href = `${CLIP_API}/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
   const dur = Math.round(E - S);
   dlDur.textContent = dur >= 60 ? `${Math.floor(dur/60)}m${dur%60}s` : `${dur}s`;
 }
@@ -118,7 +120,7 @@ function setSel(s, e) {
 
 async function loadRange() {
   try {
-    const r = await fetch(`/api/range?camera=${CAM}`);
+    const r = await fetch(`${CLIP_API}/range?camera=${CAM}`);
     if (!r.ok) return;
     const d = await r.json();
     if (!d.first || !d.last) return;
@@ -139,7 +141,7 @@ btnDl.addEventListener('click', e => {
 });
 
 // preview: bate direto na porta 8888 do MediaMTX, sem passar pelo nginx proxy
-document.getElementById('preview-frame').src = location.protocol + '//' + location.hostname + ':8888/cam0';
+document.getElementById('preview-frame').src = `${PREVIEW_BASE}/cam0`;
 
 // status bar
 document.getElementById('s-host').textContent = location.hostname;
@@ -147,7 +149,7 @@ document.querySelectorAll('.tab').forEach(t => { if (t.getAttribute('href') === 
 
 async function pollMetrics() {
   try {
-    const r = await fetch('/api/metrics'); if (!r.ok) return;
+    const r = await fetch(`${CLIP_API}/metrics`); if (!r.ok) return;
     const m = await r.json();
     const el = document.getElementById('s-rec');
     el.textContent = m.recording ? '● REC' : '○ idle';

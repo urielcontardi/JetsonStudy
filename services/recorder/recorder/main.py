@@ -30,14 +30,39 @@ from orwell_shared.paths import segment_path
 from .event_handler import handle_detection
 from .indexer import run_once
 from .periodic_flusher import PeriodicFlusher
+from .preview_pipeline import PreviewPipeline
 from .pipeline import (
     ai_scale_chain,
     build_raw_source,
     dvr_encoder_chain,
     event_buffer_encoder_chain,
     max_size_time_ns,
-    preview_branch,
+    preview_feed_branch,
+    preview_pipeline_desc,
 )
+
+
+def _purge_stale_buffer(tmpfs_dir: str, camera_ids: list[str]) -> None:
+    """Remove fragmentos órfãos do event buffer (tmpfs) deixados por sessões anteriores.
+
+    O `max-files` do splitmuxsink só poda os fragmentos da sessão ATUAL; a cada
+    restart do recorder (ex.: bus error do rtspclientsink) a sessão anterior fica
+    órfã no tmpfs e nunca é removida. Com restarts frequentes o /dev/shm enche
+    (visto em 2026-06-09: ~2000 fragmentos / 5 GB). No boot a nova sessão começa
+    do zero, então é seguro limpar tudo aqui.
+    """
+    removed = 0
+    for camera_id in camera_ids:
+        buf_dir = Path(tmpfs_dir) / camera_id
+        for frag in buf_dir.glob("buf-*"):
+            try:
+                frag.unlink()
+                removed += 1
+            except FileNotFoundError:
+                pass
+    if removed:
+        print(f"recorder: limpeza de boot removeu {removed} fragmento(s) órfão(s) do tmpfs",
+              flush=True)
 
 INDEXER_PERIOD_S = 2.0
 
@@ -68,14 +93,16 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
     dvr_sink_desc = (
         "splitmuxsink name=dvr_sink "
         f"max-size-time={max_size_time_ns(profile)} "
-        'muxer-factory=mp4mux '
-        'muxer-properties="properties,fragment-duration=1000,faststart=true"'
+        "send-keyframe-requests=true "
     )
 
     desc = build_raw_source(camera, profile) + " ! tee name=t "
-    desc += f"t. ! queue ! {dvr_encoder_chain(profile)} ! {dvr_sink_desc} "
+    desc += f"t. ! queue ! {dvr_encoder_chain(profile)} ! tee name=encoded "
+    desc += f"encoded. ! queue ! {dvr_sink_desc} "
 
-    if event_buf_cfg.enabled:
+    # O buffer de alta qualidade só é necessário para eventos de IA. Upload periódico usa
+    # segmentos do DVR, evitando um segundo splitmuxsink e clipes enormes.
+    if event_buf_cfg.enabled and ai_cfg.enabled:
         buffer_segment_s = max(1.0, profile.segment_seconds)
         buf_seg_ns = int(buffer_segment_s * 1_000_000_000)
         max_buffer_files = max(2, math.ceil(event_buf_cfg.buffer_seconds / buffer_segment_s) + 1)
@@ -83,8 +110,7 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
             "splitmuxsink name=buf_sink "
             f"max-size-time={buf_seg_ns} "
             f"max-files={max_buffer_files} "
-            'muxer-factory=mp4mux '
-            'muxer-properties="properties,fragment-duration=1000,faststart=true"'
+            "send-keyframe-requests=true "
         )
         desc += (
             f"t. ! queue ! "
@@ -99,16 +125,19 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
             f"nvinfer config-file-path={ai_cfg.model_path} name=ai_infer "
         )
 
-    preview_chain = preview_branch(preview_cfg, camera.id, profile)
-    if preview_chain:
-        desc += f"t. ! queue ! {preview_chain} "
+    # Preview: o pipeline de captura só ALIMENTA a ponte intervideo (sink que descarta se
+    # ninguém consome). O encode + rtspclientsink vivem num pipeline separado e supervisionado
+    # (ver PreviewPipeline em main()), então uma queda de RTSP nunca derruba esta gravação.
+    feed_chain = preview_feed_branch(preview_cfg, camera.id, profile)
+    if feed_chain:
+        desc += f"encoded. ! queue ! {feed_chain} "
 
     pipeline = Gst.parse_launch(desc)
 
     dvr = pipeline.get_by_name("dvr_sink")
     dvr.connect("format-location-full", _make_format_location_cb(data_dir, camera.id))
 
-    if event_buf_cfg.enabled:
+    if event_buf_cfg.enabled and ai_cfg.enabled:
         buf = pipeline.get_by_name("buf_sink")
         buf.connect("format-location-full",
                     _make_buf_format_location_cb(event_buf_cfg.tmpfs_dir, camera.id))
@@ -209,6 +238,15 @@ def main() -> None:
         print("recorder: nenhuma câmera disponível, saindo", flush=True)
         return
 
+    for cam in available:
+        try:
+            Path(f"/dev/shm/orwell-preview-cam{cam.id}.sock").unlink()
+        except FileNotFoundError:
+            pass
+
+    if config.event_buffer.enabled:
+        _purge_stale_buffer(config.event_buffer.tmpfs_dir, [cam.id for cam in available])
+
     pipelines = [
         _build_camera_bin(
             Gst, cam, config.capture,
@@ -235,6 +273,7 @@ def main() -> None:
         event_index=event_index,
         interval_s=config.conveyor.periodic_upload_interval_s,
         enabled=config.conveyor.periodic_upload_enabled and config.conveyor.enabled,
+        segment_index=index,
     )
     flusher.start()
     print(
@@ -279,12 +318,25 @@ def main() -> None:
         bus.add_signal_watch()
         bus.connect("message", _on_bus_message, None)
 
+    # Pipelines de preview: isolados da gravação. Um erro aqui (ex.: RTSP caiu) é tratado
+    # pelo próprio supervisor (rebuild com backoff) e NUNCA chega no loop principal acima.
+    preview_pipes: list[PreviewPipeline] = []
+    if config.preview.enabled:
+        for cam in available:
+            desc = preview_pipeline_desc(config.preview, cam.id, config.capture)
+            pp = PreviewPipeline(Gst, GLib, desc, name=f"cam{cam.id}")
+            pp.start()
+            preview_pipes.append(pp)
+        print(f"recorder: {len(preview_pipes)} pipeline(s) de preview iniciado(s)", flush=True)
+
     try:
         loop.run()
     finally:
         stop.set()
         flusher.stop()
         watcher.stop()
+        for pp in preview_pipes:
+            pp.stop()
         for p in pipelines:
             p.set_state(Gst.State.NULL)
 

@@ -14,10 +14,11 @@ services:
       preview:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null && wget -qO- http://preview:8888/cam0/index.m3u8 >/dev/null"]
       interval: 10s
-      timeout: 3s
-      retries: 3
+      timeout: 5s
+      retries: 6
+      start_period: 45s
 
   clip-api:
     build:
@@ -53,8 +54,14 @@ services:
       ORWELL_DEVICE_ID: ${ORWELL_DEVICE_ID:-}  # MAC do host; setado pelo provisioning em .env
     volumes:
       - ${ORWELL_DATA_DIR:-./data}:/data
-      - ${ORWELL_EVENTS_DIR:-./events}:/events:ro
+      - ${ORWELL_EVENTS_DIR:-./events}:/events
       - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time; p='/tmp/orwell-uploader-heartbeat'; assert os.path.exists(p) and time.time()-os.path.getmtime(p)<90"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 45s
 
   dashboard:
     build:
@@ -98,6 +105,12 @@ services:
       # adicione mais conforme as câmeras: /dev/video1, etc.
     depends_on:
       - preview
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import sqlite3,time; c=sqlite3.connect('/data/index.sqlite'); assert c.execute('SELECT 1 FROM segments WHERE t_end>? LIMIT 1',(time.time()-20,)).fetchone()"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 45s
 
   # ── preview: MediaMTX recebe RTSP do recorder e expõe HLS/WebRTC. ──
   # Serviço base leve; o recorder publica nele quando o profile jetson está ativo.

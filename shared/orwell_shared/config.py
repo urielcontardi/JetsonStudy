@@ -58,6 +58,13 @@ class EventBufferConfig(BaseModel):
 class PreviewConfig(BaseModel):
     enabled: bool = False
     rtsp_base_url: str = "rtsp://preview:8554"
+    # O preview roda num pipeline GStreamer próprio, isolado da gravação (ver
+    # recorder/preview_pipeline.py). Frames chegam reduzidos por uma ponte intervideo;
+    # estes parâmetros valem só para o stream de preview, não para a gravação no NVMe.
+    width: int = 1280
+    height: int = 720
+    fps: int = 15
+    bitrate_kbps: int = 2000
 
 
 class ConveyorConfig(BaseModel):

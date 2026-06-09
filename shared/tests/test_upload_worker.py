@@ -85,6 +85,29 @@ def test_worker_skips_event_when_clip_not_found(tmp_path):
     assert updated.uploaded_at == -1.0
 
 
+def test_worker_marks_oversized_clip_as_failed(tmp_path):
+    index = _make_index(tmp_path)
+    event, clip = _make_event(tmp_path, event_id="evt-large")
+    clip.write_bytes(b"TOO-LARGE")
+    index.add_event(event)
+
+    mock_uploader = MagicMock()
+    worker = UploadWorker(
+        index,
+        mock_uploader,
+        upload_interval_s=0.05,
+        status_interval_s=9999,
+        max_clip_bytes=4,
+    )
+    worker.start()
+    time.sleep(0.2)
+    worker.stop()
+
+    mock_uploader.upload.assert_not_called()
+    assert index.get("evt-large").uploaded_at == -1.0
+    assert not clip.parent.exists()
+
+
 def test_worker_retries_failed_upload(tmp_path):
     index = _make_index(tmp_path)
     event, _ = _make_event(tmp_path)

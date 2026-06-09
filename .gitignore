@@ -9,6 +9,7 @@ models/*.trt
 
 # Dados de runtime (vídeo gravado, índice, clipes)
 data/
+events/
 *.mp4
 *.mkv
 *.db

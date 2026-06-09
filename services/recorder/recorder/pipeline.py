@@ -33,7 +33,10 @@ def encoder_chain(profile: CaptureProfile) -> str:
     kf = keyframe_interval(profile)
     if profile.encoder == "hw":
         elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
-        return f"{elem} bitrate={profile.bitrate_kbps * 1000} iframeinterval={kf}"
+        return (
+            f"{elem} bitrate={profile.bitrate_kbps * 1000} "
+            f"iframeinterval={kf} idrinterval={kf} insert-sps-pps=true"
+        )
     # software (somente h264; h265/sw é rejeitado na validação da config)
     return (
         "nvvidconv ! video/x-raw,format=I420 ! "
@@ -73,31 +76,48 @@ def inference_stage(ai: AIConfig, num_cameras: int) -> str:
     )
 
 
-def preview_branch(preview: PreviewConfig, camera_id: str, profile: CaptureProfile | None = None) -> str:
-    """Branch opcional do tee para o MediaMTX (RTSP).
+def preview_channel(camera_id: str) -> str:
+    """Socket shared-memory que liga captura e publicação RTSP."""
+    return f"/dev/shm/orwell-preview-cam{camera_id}.sock"
 
-    O tee emite frames NVMM brutos, portanto esta branch precisa encodar antes de
-    entregar ao rtspclientsink. Usa H264 (2 Mbps) para máxima compatibilidade com
-    clientes RTSP. protocols=tcp evita problemas de NAT/firewall em containers.
+
+def preview_feed_branch(
+    preview: PreviewConfig,
+    camera_id: str,
+    profile: CaptureProfile,
+) -> str:
+    """Branch do tee, no pipeline de CAPTURA, que alimenta o pipeline de preview.
+
+    Recebe o H.264 já codificado da branch DVR e entrega bytes para um shmsink não bloqueante.
+    A publicação RTSP vive em outro pipeline e lê o socket com shmsrc.
+    """
+    if not preview.enabled:
+        return ""
+    if profile.codec != "h264":
+        return ""
+    return (
+        "h264parse config-interval=-1 disable-passthrough=true ! "
+        "video/x-h264,stream-format=byte-stream,alignment=au ! "
+        f"shmsink socket-path={preview_channel(camera_id)} wait-for-connection=false "
+        "sync=false async=false shm-size=8388608"
+    )
+
+
+def preview_pipeline_desc(preview: PreviewConfig, camera_id: str, profile: CaptureProfile) -> str:
+    """Descrição do pipeline de PREVIEW, isolado da gravação.
+
+    Lê H.264 da shared memory e publica no MediaMTX. Sem retry-delay no rtspclientsink:
+    a reconexão é um rebuild completo feito pelo supervisor (PreviewPipeline).
     """
     if not preview.enabled:
         return ""
     url = f"{preview.rtsp_base_url.rstrip('/')}/cam{camera_id}"
-    if profile is not None and profile.encoder == "hw":
-        kf = max(1, round(profile.gop_seconds * profile.fps))
-        encode = (
-            f"nvvideoconvert ! "
-            f"nvv4l2h264enc bitrate=2000000 iframeinterval={kf} ! h264parse ! "
-        )
-    elif profile is not None:
-        kf = max(1, round(profile.gop_seconds * profile.fps))
-        encode = (
-            f"nvvideoconvert ! video/x-raw,format=I420 ! "
-            f"x264enc speed-preset=ultrafast tune=zerolatency bitrate=2000 key-int-max={kf} ! h264parse ! "
-        )
-    else:
-        encode = ""
-    return f"{encode}rtspclientsink location={url} protocols=tcp retry-delay=5"
+    return (
+        f"shmsrc socket-path={preview_channel(camera_id)} is-live=true do-timestamp=true ! "
+        "video/x-h264,stream-format=byte-stream,alignment=au ! "
+        "h264parse config-interval=-1 ! "
+        f"rtspclientsink location={url} protocols=tcp"
+    )
 
 
 def max_size_time_ns(profile: CaptureProfile) -> int:
@@ -121,8 +141,9 @@ def dvr_encoder_chain(profile: CaptureProfile) -> str:
         elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
         return (
             f"nvvideoconvert ! "
-            f"{elem} bitrate={profile.bitrate_kbps * 1000} iframeinterval={kf} ! "
-            f"{parser_element(profile)}"
+            f"{elem} bitrate={profile.bitrate_kbps * 1000} "
+            f"iframeinterval={kf} idrinterval={kf} insert-sps-pps=true ! "
+            f"{parser_element(profile)} config-interval=-1 disable-passthrough=true"
         )
     return (
         "nvvideoconvert ! video/x-raw,format=I420 ! "
@@ -138,8 +159,9 @@ def event_buffer_encoder_chain(profile: CaptureProfile, buf_bitrate_kbps: int) -
         elem = "nvv4l2h265enc" if profile.codec == "h265" else "nvv4l2h264enc"
         return (
             f"nvvideoconvert ! "
-            f"{elem} bitrate={buf_bitrate_kbps * 1000} iframeinterval={kf} ! "
-            f"{parser_element(profile)}"
+            f"{elem} bitrate={buf_bitrate_kbps * 1000} "
+            f"iframeinterval={kf} idrinterval={kf} insert-sps-pps=true ! "
+            f"{parser_element(profile)} config-interval=-1 disable-passthrough=true"
         )
     return (
         "nvvideoconvert ! video/x-raw,format=I420 ! "

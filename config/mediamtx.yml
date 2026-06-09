@@ -4,6 +4,12 @@ rtspAddress: :8554
 
 hls: yes
 hlsAddress: :8888
+# Preview é DEV: robustez > baixa latência. O variant mpegts é muito mais tolerante a jitter
+# de timing do que o low-latency (fMP4) padrão, que matava o muxer com "DTS is not
+# monotonically increasing" e emitia erros de "part duration changed" a cada poucos segundos.
+hlsVariant: mpegts
+hlsSegmentCount: 7
+hlsSegmentDuration: 1s
 
 webrtc: yes
 webrtcAddress: :8889

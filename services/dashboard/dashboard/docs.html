@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>orwell · docs</title>
+<style>
+body { background:#0d0d0d; color:#aaa; font:14px monospace; margin:0; }
+nav { padding:12px 20px; border-bottom:1px solid #222; }
+nav a { color:#777; margin-right:18px; text-decoration:none; }
+main { max-width:980px; margin:24px auto; padding:0 20px 40px; }
+h1,h2 { color:#ddd; }
+code { color:#8bc34a; }
+li { margin:8px 0; }
+img { width:100%; background:#fff; margin-top:12px; }
+</style>
+</head>
+<body>
+<nav><a href="/">live</a><a href="/config">config</a><a href="/docs">docs</a></nav>
+<main>
+<h1>Referência da API</h1>
+<ul>
+  <li><code>GET /api/healthz</code></li>
+  <li><code>GET /api/cameras</code></li>
+  <li><code>GET /api/range?camera=0</code></li>
+  <li><code>GET /api/clips?camera=0&amp;start=...&amp;end=...</code></li>
+  <li><code>GET /api/events</code></li>
+  <li><code>GET /api/events/{event_id}/clip</code></li>
+  <li><code>GET /api/orwell/events/{sensor_id}</code></li>
+  <li><code>GET /api/orwell/clip/{sensor_id}/{event_id}</code></li>
+  <li><code>GET /api/config</code> e <code>PATCH /api/config</code></li>
+  <li><code>GET /api/upload-stats</code></li>
+</ul>
+<p>A documentação interativa do FastAPI está em <a href="/api/docs">/api/docs</a>.</p>
+<h2>Arquitetura</h2>
+<p><a href="/architecture.d2">fonte D2</a> · <a href="/architecture.svg">SVG</a></p>
+<img src="/architecture.svg" alt="Arquitetura Orwell">
+</main>
+</body>
+</html>

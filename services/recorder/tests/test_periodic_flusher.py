@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from orwell_shared.events import EventIndex
+from orwell_shared.index import Segment, SegmentIndex
 from recorder.periodic_flusher import PeriodicFlusher
 
 
@@ -52,6 +53,40 @@ def test_flush_copies_buffer_files(setup, tmp_path):
         clip = Path(ev.clip_path)
         assert clip.name == "clip.mp4"
         assert clip.exists()
+
+
+def test_flush_uses_dvr_segments_when_index_is_provided(setup, monkeypatch):
+    tmpfs, events_dir, event_idx = setup
+    segment_idx = SegmentIndex(events_dir.parent / "segments.sqlite")
+    segment = events_dir.parent / "seg.mp4"
+    segment.write_bytes(b"SEGMENT")
+    segment_idx.add_segment(Segment("cam0", 90.0, 100.0, str(segment), 7, 90.0))
+    calls = []
+
+    def fake_extract(index, camera, start, end, out):
+        calls.append((index, camera, start, end))
+        out.write_bytes(b"SMALL_DVR_CLIP")
+        return out
+
+    monkeypatch.setattr("recorder.periodic_flusher.extract_clip", fake_extract)
+    monkeypatch.setattr("recorder.periodic_flusher.time.time", lambda: 100.0)
+    flusher = PeriodicFlusher(
+        cameras=["cam0"],
+        tmpfs_dir=str(tmpfs),
+        events_dir=str(events_dir),
+        event_index=event_idx,
+        interval_s=9999,
+        enabled=True,
+        segment_index=segment_idx,
+        clip_duration_s=10,
+    )
+
+    flusher._flush_all()
+
+    pending = event_idx.pending_uploads()
+    assert len(pending) == 1
+    assert Path(pending[0].clip_path).read_bytes() == b"SMALL_DVR_CLIP"
+    assert calls == [(segment_idx, "cam0", 90.0, 100.0)]
 
 
 def test_flush_disabled_does_nothing(setup):

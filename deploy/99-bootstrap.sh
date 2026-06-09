@@ -17,6 +17,7 @@ STEPS=(
   "10-base.sh"
   "20-storage.sh"
   "40-docker.sh"
+  "15-cleanup-legacy-stacks.sh"   # remove stacks legados que disputam a câmera (precisa do docker)
   "50-nvidia-runtime.sh"
   "60-tailscale.sh"
   "70-time-ntp.sh"

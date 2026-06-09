@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import threading
 from pathlib import Path
 
 from orwell_shared.events import EventIndex
 
 logger = logging.getLogger(__name__)
+DEFAULT_MAX_CLIP_BYTES = 64 * 1024 * 1024
 
 
 class UploadWorker:
@@ -16,11 +18,15 @@ class UploadWorker:
         uploader,
         upload_interval_s: float = 30.0,
         status_interval_s: float = 300.0,
+        max_clip_bytes: int = DEFAULT_MAX_CLIP_BYTES,
+        heartbeat_path: str | Path | None = None,
     ) -> None:
         self._index = event_index
         self._uploader = uploader
         self._upload_interval = upload_interval_s
         self._status_interval = status_interval_s
+        self._max_clip_bytes = max_clip_bytes
+        self._heartbeat_path = Path(heartbeat_path) if heartbeat_path else None
         self._stop_event = threading.Event()
         self._upload_thread: threading.Thread | None = None
         self._status_thread: threading.Thread | None = None
@@ -44,6 +50,8 @@ class UploadWorker:
                 self._process_pending()
             except Exception:
                 logger.exception("unexpected error in upload loop")
+            if self._heartbeat_path is not None:
+                self._heartbeat_path.touch()
             self._stop_event.wait(self._upload_interval)
 
     def _status_loop(self) -> None:
@@ -62,6 +70,17 @@ class UploadWorker:
             clip_path = Path(event.clip_path) if event.clip_path else None
             if clip_path is None or not clip_path.is_file():
                 logger.warning("finalized clip not found for event %s, marking as failed", event.id)
+                self._index.mark_upload_failed(event.id)
+                continue
+            clip_size = clip_path.stat().st_size
+            if clip_size > self._max_clip_bytes:
+                logger.error(
+                    "clip for event %s is too large (%d bytes > %d), marking as failed",
+                    event.id,
+                    clip_size,
+                    self._max_clip_bytes,
+                )
+                shutil.rmtree(clip_path.parent, ignore_errors=True)
                 self._index.mark_upload_failed(event.id)
                 continue
             try:

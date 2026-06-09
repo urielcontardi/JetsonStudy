@@ -10,7 +10,9 @@ from recorder.pipeline import (
     keyframe_interval,
     max_size_time_ns,
     parser_element,
-    preview_branch,
+    preview_channel,
+    preview_feed_branch,
+    preview_pipeline_desc,
 )
 
 
@@ -94,29 +96,59 @@ def test_inference_stage_enabled_has_nvinfer_chain():
     assert "nvtracker" in chain
 
 
-def test_preview_branch_disabled_is_empty():
-    assert preview_branch(PreviewConfig(enabled=False), camera_id="0") == ""
+def test_preview_feed_branch_disabled_is_empty():
+    assert preview_feed_branch(
+        PreviewConfig(enabled=False), camera_id="0", profile=CaptureProfile()
+    ) == ""
+    assert preview_pipeline_desc(
+        PreviewConfig(enabled=False), camera_id="0", profile=CaptureProfile()
+    ) == ""
 
 
-def test_preview_branch_enabled_pushes_rtsp():
-    branch = preview_branch(
-        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"),
+def test_preview_feed_branch_feeds_intervideo_not_rtsp():
+    """O pipeline de captura só alimenta a ponte intervideo — sem RTSP no caminho crítico."""
+    feed = preview_feed_branch(
+        PreviewConfig(enabled=True, width=1280, height=720),
+        camera_id="0",
+        profile=CaptureProfile(encoder="hw", codec="h264"),
+    )
+    assert "shmsink" in feed
+    assert f"socket-path={preview_channel('0')}" in feed
+    assert "nvv4l2h264enc" not in feed
+    assert "stream-format=byte-stream,alignment=au" in feed
+    assert "rtspclientsink" not in feed  # RTSP vive no pipeline separado, não na gravação
+
+
+def test_preview_feed_requires_h264_dvr_stream():
+    assert preview_feed_branch(
+        PreviewConfig(enabled=True),
+        camera_id="0",
+        profile=CaptureProfile(encoder="hw", codec="h265"),
+    ) == ""
+
+
+def test_preview_pipeline_desc_hw_is_cfr_and_rtsp():
+    desc = preview_pipeline_desc(
+        PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554", fps=15),
         camera_id="0",
         profile=CaptureProfile(encoder="hw"),
     )
-    assert "rtspclientsink" in branch
-    assert "nvv4l2h264enc" in branch
-    assert "protocols=tcp" in branch
+    assert f"shmsrc socket-path={preview_channel('0')}" in desc
+    assert "video/x-h264" in desc
+    assert "nvv4l2h264enc" not in desc
+    assert "rtspclientsink location=rtsp://preview:8554/cam0" in desc
+    assert "protocols=tcp" in desc
+    assert "retry-delay" not in desc  # reconexão é rebuild via supervisor, não retry interno
 
 
-def test_preview_branch_enabled_sw_encoder():
-    branch = preview_branch(
+def test_preview_pipeline_desc_sw_encoder():
+    desc = preview_pipeline_desc(
         PreviewConfig(enabled=True, rtsp_base_url="rtsp://preview:8554"),
         camera_id="1",
         profile=CaptureProfile(encoder="sw", codec="h264"),
     )
-    assert "x264enc" in branch
-    assert "rtspclientsink" in branch
+    assert "shmsrc" in desc
+    assert "rtspclientsink location=rtsp://preview:8554/cam1" in desc
 
 
 def test_build_raw_source_no_encoder():
@@ -133,6 +165,8 @@ def test_dvr_encoder_chain_hw_h265_low_bitrate():
     prof = CaptureProfile(codec="h265", encoder="hw", fps=25, gop_seconds=1.0, bitrate_kbps=500)
     chain = dvr_encoder_chain(prof)
     assert "nvv4l2h265enc" in chain
+    assert "idrinterval=25" in chain
+    assert "insert-sps-pps=true" in chain
     assert "bitrate=500000" in chain
     assert "iframeinterval=25" in chain
     assert "h265parse" in chain
