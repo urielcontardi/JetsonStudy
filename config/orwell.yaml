@@ -42,7 +42,7 @@ preview:
   rtsp_base_url: rtsp://preview:8554
 
 conveyor:
-  enabled: false            # true quando pronto para enviar eventos
+  enabled: true
   host: conveyor.tractian.com
   port: 8080
   gateway_ext_id: "000011113333"   # gateway virtual compartilhado (mesmo do iot-emulator)

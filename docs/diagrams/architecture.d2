@@ -39,10 +39,9 @@ jetson: "Jetson Orin NX" {
     style.stroke: "#2f9e44"
   }
 
-  uploader: "🐳 uploader\n\nLê EventIndex (SQLite).\nEnvia via VSTP → Conveyor.\n⚠ idle enquanto conveyor.enabled=false" {
-    style.fill: "#fff5f5"
-    style.stroke: "#e03131"
-    style.stroke-dash: 5
+  uploader: "🐳 uploader\n\nLê EventIndex (SQLite).\nEnvia via VSTP → Conveyor." {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
   }
 
   dashboard: "🐳 dashboard  :8080 interno\n\nInterface web para\nclips e eventos" {
@@ -71,10 +70,9 @@ tailscale: "🔒 Tailscale\nomnitrac-4cbb47c1331a" {
   style.stroke: "#1971c2"
 }
 
-conveyor: "☁ Conveyor  ⚠ disabled\nconveyor.tractian.com:8080\nVSTP → S3" {
-  style.fill: "#fff5f5"
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
+conveyor: "☁ Conveyor\nconveyor.tractian.com:8080\nVSTP → S3" {
+  style.fill: "#e7f5ff"
+  style.stroke: "#1971c2"
 }
 
 registerapi: "omni-ops\nregister-api" {
@@ -107,10 +105,7 @@ jetson.preview -> tailscale: ":8888 WebRTC\n(direto, bypassa gateway)" {
 # Fluxo desabilitado
 # ─────────────────────────────────────────────────────────────────────
 jetson.storage -> jetson.uploader: "lê events/\n+ EventIndex"
-jetson.uploader -> conveyor: "⚠ VSTP\n(disabled)" {
-  style.stroke: "#e03131"
-  style.stroke-dash: 5
-}
+jetson.uploader -> conveyor: "VSTP"
 
 # ─────────────────────────────────────────────────────────────────────
 # Dev / Provisioning
