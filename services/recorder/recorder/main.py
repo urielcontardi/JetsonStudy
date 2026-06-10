@@ -168,7 +168,7 @@ def _wire_ai_probe(Gst, pipeline, camera, config, event_index: EventIndex) -> No
                 l_obj = frame.obj_meta_list
                 while l_obj:
                     obj = pyds.NvDsObjectMeta.cast(l_obj.data)
-                    if obj.confidence >= config.ai.confidence_threshold:
+                    if obj.confidence >= camera.ai.confidence_threshold:
                         handle_detection(
                             camera_id=cam_id,
                             t_evento=time.time(),
@@ -250,14 +250,14 @@ def main() -> None:
     pipelines = [
         _build_camera_bin(
             Gst, cam, config.capture,
-            config.ai, config.event_buffer, config.preview,
+            cam.ai, config.event_buffer, config.preview,
             config.retention.data_dir,
         )
         for cam in available
     ]
 
-    if config.ai.enabled:
-        for cam, pipeline in zip(available, pipelines):
+    for cam, pipeline in zip(available, pipelines):
+        if cam.ai.enabled:
             _wire_ai_probe(Gst, pipeline, cam, config, event_index)
 
     for p in pipelines:
