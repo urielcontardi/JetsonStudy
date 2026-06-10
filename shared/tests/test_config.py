@@ -71,6 +71,14 @@ def test_camera_ai_default_disabled():
     assert cam.ai.model_path == "/models/detector.engine"
 
 
+def test_camera_ai_instances_are_independent():
+    from orwell_shared.config import CameraConfig
+    cam1 = CameraConfig(id="0", argus_sensor_id=0)
+    cam2 = CameraConfig(id="1", argus_sensor_id=1)
+    cam1.ai.enabled = True
+    assert cam2.ai.enabled is False
+
+
 def test_preview_default_disabled():
     cfg = OrwellConfig()
     assert cfg.preview.enabled is False
