@@ -1,46 +1,40 @@
 # Orwell
 
-**DVR de borda com IA** para NVIDIA Jetson Orin NX + câmeras Stereolabs ZED X One S.
+**Edge DVR with AI** for NVIDIA Jetson Orin NX + Stereolabs ZED X One S cameras.
 
-Orwell grava câmeras continuamente em um **buffer circular** (estilo DVR), permite **recortar e
-baixar intervalos** de vídeo remotamente (via **Tailscale**) e, em fase seguinte, roda **IA local**
-que dispara o **envio de ~10 s de vídeo** de cada evento detectado para a nuvem.
+Orwell records cameras continuously into a **circular buffer**, lets you **clip and download intervals** remotely over **Tailscale**, and (Phase 2) runs **local AI** that triggers **~10 s clip uploads** per detected event to the cloud.
 
-> 📐 Especificação: [design original](docs/superpowers/specs/2026-05-31-orwell-dvr-borda-design.md)
-> + [reescrita para Orin NX](docs/superpowers/specs/2026-06-01-orwell-nx-rewrite-design.md) (encode HW config-driven).
+## Architecture
 
-## Visão geral
+![Architecture](docs/diagrams/architecture.svg)
 
-```
-ZED X One S ×2  →  [recorder: DeepStream]  →  NVMe (segmentos + índice SQLite)
-   (GMSL2)            encode HW H.265 (NVENC)
-                      tee + IA (Fase 2)    ├─→ [clip-api: FastAPI] ──(Tailscale)──→ você
-                                           └─→ [preview: MediaMTX] (HLS/RTSP/WebRTC)
-```
+## Stack
 
-- **Plataforma:** Jetson Orin NX (NVENC → encode por hardware; Nano = fallback SW), JetPack + driver GMSL Stereolabs.
-- **Stack:** tudo em **Python** — DeepStream (`pyds`) no plano de mídia/IA; FastAPI no plano de controle.
-- **Deploy:** docker-compose (POC) → K3s + Rancher Fleet (frota).
-
-## Componentes
-
-| Serviço | **Função** |
+| Layer | Technology |
 |---|---|
-| `recorder` | Captura, encode, gravação contínua |
-| `gateway` | Borda HTTP única: `/`, `/api`, `/preview` |
-| `clip-api` | `GET /clips?camera&start&end` → MP4 |
-| `preview` | Stream ao vivo RTSP/HLS/WebRTC via MediaMTX |
+| Capture & encode | DeepStream (`pyds`), Argus (`nvarguscamerasrc`), NVENC H.265 |
+| Control plane | FastAPI |
+| Storage | fMP4/CMAF ~4 s segments + HLS playlist + SQLite index on NVMe |
+| Remote access | Tailscale |
+| Deployment | docker-compose (POC) → K3s + Rancher Fleet (fleet) |
 
-## Status / Roadmap
+**Hardware:** Jetson Orin NX (NVENC → HW encode) — Orin Nano is a fallback (SW H.264). Cameras connect via GMSL2; the Stereolabs driver runs on the host (kernel-level, not containerizable).
 
-- [ ] **Fase 1 (POC):** gravação contínua 2 câmeras + rotação + índice + Clip API via Tailscale.
-- [ ] **Fase 2:** modelo TensorRT real → eventos → upload de clipes (transporte a definir).
-- [ ] **Fase 3:** K3s + Rancher Fleet, registry, WebRTC em produção, avaliar Fleet Command / Yocto.
+## Services
 
-Detalhes em [`docs/roadmap.md`](docs/roadmap.md).
+| Service | Role |
+|---|---|
+| `recorder` | Continuous capture, HW encode, circular write |
+| `clip-api` | `GET /clips?camera&start&end` → MP4 (stream copy) |
+| `gateway` | Single HTTP edge: `/`, `/api`, `/preview` |
+| `preview` | Live RTSP/HLS/WebRTC via MediaMTX |
 
-## Documentação
+## Roadmap
 
-- [Arquitetura](docs/architecture.md) · [Glossário](docs/glossary.md) ·
-  [Hardware](docs/hardware.md) · [Operação](docs/operations.md) ·
-  [Decisões (ADRs)](docs/decisions/)
+- [ ] **Phase 1 (POC):** continuous 2-camera recording, rotation, SQLite index, Clip API over Tailscale
+- [ ] **Phase 2:** TensorRT model → events → clip upload (transport TBD)
+- [ ] **Phase 3:** K3s + Rancher Fleet, private registry, production WebRTC
+
+## Docs
+
+[Architecture](docs/architecture.md) · [Hardware](docs/hardware.md) · [Glossary](docs/glossary.md) · [Operations](docs/operations.md) · [ADRs](docs/decisions/) · [Deploy guide](DEPLOY.md)
