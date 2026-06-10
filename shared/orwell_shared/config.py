@@ -7,10 +7,20 @@ import yaml
 from pydantic import BaseModel, Field, model_validator
 
 
+class AIConfig(BaseModel):
+    enabled: bool = False
+    inference_fps: int = 8
+    confidence_threshold: float = 0.6
+    input_width: int = 640
+    input_height: int = 360
+    model_path: str = "/models/detector.engine"
+
+
 class CameraConfig(BaseModel):
     id: str
     argus_sensor_id: int
     name: str | None = None
+    ai: AIConfig = Field(default_factory=AIConfig)
 
 
 class CaptureProfile(BaseModel):
@@ -37,15 +47,6 @@ class RetentionConfig(BaseModel):
     data_dir: str = "/var/lib/orwell/data"
     events_dir: str = "/var/lib/orwell/events"
     disk_high_watermark_pct: int = 85
-
-
-class AIConfig(BaseModel):
-    enabled: bool = False
-    inference_fps: int = 8
-    confidence_threshold: float = 0.6
-    input_width: int = 640
-    input_height: int = 360
-    model_path: str = "/models/detector.engine"
 
 
 class EventBufferConfig(BaseModel):
@@ -88,7 +89,6 @@ class OrwellConfig(BaseModel):
     cameras: list[CameraConfig] = Field(default_factory=list)
     capture: CaptureProfile = Field(default_factory=CaptureProfile)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
-    ai: AIConfig = Field(default_factory=AIConfig)
     event_buffer: EventBufferConfig = Field(default_factory=EventBufferConfig)
     preview: PreviewConfig = Field(default_factory=PreviewConfig)
     conveyor: ConveyorConfig = Field(default_factory=ConveyorConfig)

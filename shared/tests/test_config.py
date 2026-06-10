@@ -64,10 +64,45 @@ def test_h264_software_is_allowed():
     assert prof.encoder == "sw"
 
 
-def test_ai_and_preview_default_disabled():
+def test_camera_ai_default_disabled():
+    from orwell_shared.config import CameraConfig
+    cam = CameraConfig(id="0", argus_sensor_id=0)
+    assert cam.ai.enabled is False
+    assert cam.ai.model_path == "/models/detector.engine"
+
+
+def test_preview_default_disabled():
     cfg = OrwellConfig()
-    assert cfg.ai.enabled is False
     assert cfg.preview.enabled is False
+
+
+def test_camera_ai_parsed_from_yaml(tmp_path):
+    from orwell_shared.config import load_config
+    p = tmp_path / "orwell.yaml"
+    p.write_text("""
+cameras:
+  - id: "0"
+    argus_sensor_id: 0
+    ai:
+      enabled: true
+      model_path: /models/cam0/detector.engine
+      confidence_threshold: 0.8
+  - id: "1"
+    argus_sensor_id: 1
+    ai:
+      enabled: false
+      model_path: /models/cam1/classifier.engine
+""")
+    cfg = load_config(p)
+    assert cfg.cameras[0].ai.enabled is True
+    assert cfg.cameras[0].ai.model_path == "/models/cam0/detector.engine"
+    assert cfg.cameras[0].ai.confidence_threshold == 0.8
+    assert cfg.cameras[1].ai.enabled is False
+
+
+def test_orwell_config_has_no_global_ai():
+    cfg = OrwellConfig()
+    assert not hasattr(cfg, "ai")
 
 
 def test_event_buffer_config_defaults():
