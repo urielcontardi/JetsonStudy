@@ -125,12 +125,12 @@ def _build_camera_bin(Gst, camera, profile, ai_cfg, event_buf_cfg, preview_cfg, 
             f"nvinfer config-file-path={ai_cfg.model_path} name=ai_infer "
         )
 
-    # Preview: o pipeline de captura só ALIMENTA a ponte intervideo (sink que descarta se
-    # ninguém consome). O encode + rtspclientsink vivem num pipeline separado e supervisionado
-    # (ver PreviewPipeline em main()), então uma queda de RTSP nunca derruba esta gravação.
+    # Preview: branca dos frames CRUS (pré-encode DVR) e re-encoda com bitrate/resolução
+    # próprios. Assim a qualidade do preview é independente do bitrate baixo do DVR.
+    # O sink descarta frames se ninguém consome (wait-for-connection=false).
     feed_chain = preview_feed_branch(preview_cfg, camera.id, profile)
     if feed_chain:
-        desc += f"encoded. ! queue ! {feed_chain} "
+        desc += f"t. ! queue ! {feed_chain} "
 
     pipeline = Gst.parse_launch(desc)
 

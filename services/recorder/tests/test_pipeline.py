@@ -105,26 +105,48 @@ def test_preview_feed_branch_disabled_is_empty():
     ) == ""
 
 
-def test_preview_feed_branch_feeds_intervideo_not_rtsp():
-    """O pipeline de captura só alimenta a ponte intervideo — sem RTSP no caminho crítico."""
+def test_preview_feed_branch_hw_encodes_at_preview_resolution():
+    """Feed branch escala e re-encodar em H.264 com resolução/bitrate do PreviewConfig."""
     feed = preview_feed_branch(
-        PreviewConfig(enabled=True, width=1280, height=720),
+        PreviewConfig(enabled=True, width=1280, height=720, bitrate_kbps=2000),
         camera_id="0",
-        profile=CaptureProfile(encoder="hw", codec="h264"),
+        profile=CaptureProfile(encoder="hw", codec="h264", width=1920, height=1080),
     )
     assert "shmsink" in feed
     assert f"socket-path={preview_channel('0')}" in feed
-    assert "nvv4l2h264enc" not in feed
-    assert "stream-format=byte-stream,alignment=au" in feed
-    assert "rtspclientsink" not in feed  # RTSP vive no pipeline separado, não na gravação
+    assert "nvvideoconvert" in feed
+    assert "width=1280" in feed
+    assert "height=720" in feed
+    assert "nvv4l2h264enc" in feed
+    assert "bitrate=2000000" in feed       # NVENC espera bps
+    assert "rtspclientsink" not in feed    # RTSP vive no pipeline separado
 
 
-def test_preview_feed_requires_h264_dvr_stream():
-    assert preview_feed_branch(
-        PreviewConfig(enabled=True),
+def test_preview_feed_branch_hw_works_with_h265_dvr():
+    """Preview sempre publica H.264, independente do codec do DVR."""
+    feed = preview_feed_branch(
+        PreviewConfig(enabled=True, width=1280, height=720, bitrate_kbps=2000),
         camera_id="0",
         profile=CaptureProfile(encoder="hw", codec="h265"),
-    ) == ""
+    )
+    assert feed != ""
+    assert "nvv4l2h264enc" in feed
+    assert "nvv4l2h265enc" not in feed
+
+
+def test_preview_feed_branch_sw_encodes_at_preview_resolution():
+    """SW fallback usa x264enc com resolução e bitrate do PreviewConfig."""
+    feed = preview_feed_branch(
+        PreviewConfig(enabled=True, width=1280, height=720, bitrate_kbps=2000),
+        camera_id="0",
+        profile=CaptureProfile(encoder="sw", codec="h264"),
+    )
+    assert "shmsink" in feed
+    assert f"socket-path={preview_channel('0')}" in feed
+    assert "x264enc" in feed
+    assert "width=1280" in feed
+    assert "height=720" in feed
+    assert "bitrate=2000" in feed          # x264enc usa kbps
 
 
 def test_preview_pipeline_desc_hw_is_cfr_and_rtsp():

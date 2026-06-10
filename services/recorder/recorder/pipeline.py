@@ -86,16 +86,33 @@ def preview_feed_branch(
     camera_id: str,
     profile: CaptureProfile,
 ) -> str:
-    """Branch do tee, no pipeline de CAPTURA, que alimenta o pipeline de preview.
+    """Branch do tee RAW, no pipeline de CAPTURA, que re-encoda e alimenta o pipeline de preview.
 
-    Recebe o H.264 já codificado da branch DVR e entrega bytes para um shmsink não bloqueante.
+    Branca dos frames crus (NVMM, pré-encode DVR), escala para a resolução do preview e
+    re-encoda sempre em H.264 com o bitrate do PreviewConfig. Isso isola completamente a
+    qualidade do preview da qualidade do arquivo (que pode ser muito baixa para longa retenção).
     A publicação RTSP vive em outro pipeline e lê o socket com shmsrc.
     """
     if not preview.enabled:
         return ""
-    if profile.codec != "h264":
-        return ""
+    kf = max(1, round(1.0 * preview.fps))  # GOP ~1s no preview
+    if profile.encoder == "hw":
+        return (
+            f"nvvideoconvert ! "
+            f"video/x-raw(memory:NVMM),width={preview.width},height={preview.height} ! "
+            f"nvv4l2h264enc bitrate={preview.bitrate_kbps * 1000} "
+            f"iframeinterval={kf} idrinterval={kf} insert-sps-pps=true ! "
+            "h264parse config-interval=-1 disable-passthrough=true ! "
+            "video/x-h264,stream-format=byte-stream,alignment=au ! "
+            f"shmsink socket-path={preview_channel(camera_id)} wait-for-connection=false "
+            "sync=false async=false shm-size=8388608"
+        )
+    # SW fallback (Orin Nano)
     return (
+        "nvvideoconvert ! "
+        f"video/x-raw,format=I420,width={preview.width},height={preview.height} ! "
+        f"x264enc speed-preset=superfast tune=zerolatency "
+        f"bitrate={preview.bitrate_kbps} key-int-max={kf} ! "
         "h264parse config-interval=-1 disable-passthrough=true ! "
         "video/x-h264,stream-format=byte-stream,alignment=au ! "
         f"shmsink socket-path={preview_channel(camera_id)} wait-for-connection=false "
