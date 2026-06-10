@@ -4,38 +4,45 @@ cameras:
   - id: "0"
     argus_sensor_id: 0
     name: front
+    ai:
+      enabled: false
+      model_path: /models/cam0/detector.engine
+      inference_fps: 8
+      confidence_threshold: 0.6
+      input_width: 640
+      input_height: 360
+
   - id: "1"
     argus_sensor_id: 1
     name: rear
+    ai:
+      enabled: false
+      model_path: /models/cam1/classifier.engine
+      inference_fps: 8
+      confidence_threshold: 0.6
+      input_width: 640
+      input_height: 360
 
 capture:
   width: 1920
   height: 1080
   fps: 25
   codec: h264
-  encoder: hw              # NVENC — Orin NX
+  encoder: hw
   gop_seconds: 1.0
   segment_seconds: 4.0
-  bitrate_kbps: 500        # arquivo direto desde o início (~20 dias de retenção)
-
-ai:
-  enabled: false           # true quando modelo TRT disponível em /models/detector.engine
-  inference_fps: 8
-  confidence_threshold: 0.6
-  input_width: 640
-  input_height: 360
-  model_path: /models/detector.engine
+  bitrate_kbps: 500
 
 event_buffer:
   enabled: true
   buffer_seconds: 60
-  bitrate_kbps: 8000       # alta qualidade para o clip de evento
+  bitrate_kbps: 8000
   tmpfs_dir: /dev/shm/orwell
 
 retention:
   data_dir: /var/lib/orwell/data
   events_dir: /var/lib/orwell/events
-  disk_high_watermark_pct: 85   # era 50
+  disk_high_watermark_pct: 85
 
 preview:
   enabled: true
@@ -45,8 +52,6 @@ conveyor:
   enabled: true
   host: conveyor.tractian.com
   port: 8080
-  gateway_ext_id: "000011113333"   # gateway virtual compartilhado (mesmo do iot-emulator)
-  # sensor_ext_id: ""              # deixar vazio = auto-derivado de blake3(eMMC CID)
-  #                                # ver deploy/85-conveyor-register.sh
+  gateway_ext_id: "000011113333"
   upload_interval_s: 30
   status_interval_s: 300
