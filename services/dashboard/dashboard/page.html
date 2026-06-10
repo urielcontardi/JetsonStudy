@@ -65,7 +65,7 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
 <div id="statusbar">
   <span class="s-item" id="s-host">—</span>
-  <span class="s-item" id="s-rec" class="off">○ idle</span>
+  <span class="s-item off" id="s-rec">○ idle</span>
   <span class="s-item" id="s-cam">—</span>
   <span class="s-item" id="s-disk">—</span>
   <span class="s-item" id="s-event">—</span>
@@ -171,14 +171,19 @@ function wireEvents(cams) {
 
 function updateSyncDl() {
   const dur = document.getElementById('sync-dur');
+  const first = cameras[0] ? state[cameras[0]] : null;
+  const validDur = first && first.S && first.E && first.E > first.S;
+  dur.textContent = validDur
+    ? (Math.round(first.E - first.S) >= 60
+      ? `${Math.floor(Math.round(first.E - first.S)/60)}m${Math.round(first.E - first.S)%60}s`
+      : `${Math.round(first.E - first.S)}s`)
+    : '';
   cameras.forEach(id => {
     const { S, E } = state[id];
     const btn = document.getElementById(`btn-dl-${id}`);
-    if (!S || !E || E <= S) { btn.className = 'btn-dl off'; btn.href = '#'; dur.textContent = ''; return; }
+    if (!S || !E || E <= S) { btn.className = 'btn-dl off'; btn.href = '#'; return; }
     btn.className = 'btn-dl';
     btn.href = `${CLIP_API}/clips?camera=${id}&start=${iso(S)}&end=${iso(E)}`;
-    const d = Math.round(E - S);
-    dur.textContent = d >= 60 ? `${Math.floor(d/60)}m${d%60}s` : `${d}s`;
   });
 }
 
@@ -202,10 +207,12 @@ async function loadRange() {
     if (!d.first || !d.last) return;
     const t1 = epoch(d.last), t0 = epoch(d.first);
     const S = Math.max(t0, t1 - 60), E = t1;
-    document.getElementById('sync-s').value = iso(S);
-    document.getElementById('sync-e').value = iso(E);
-    cameras.forEach(id => { state[id] = { S, E }; });
-    updateSyncDl();
+    if (synced) {
+      document.getElementById('sync-s').value = iso(S);
+      document.getElementById('sync-e').value = iso(E);
+      cameras.forEach(id => { state[id] = { S, E }; });
+      updateSyncDl();
+    }
   } catch {}
 }
 
