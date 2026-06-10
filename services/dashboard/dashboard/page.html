@@ -20,6 +20,7 @@ html, body { height: 100%; background: #0d0d0d; color: #b0b0b0; font-family: mon
 #s-rec.off { color: #444; }
 #s-disk  { color: #777; }
 #s-event { color: #555; }
+#s-cam   { color: #777; }
 .s-gap   { flex: 1; }
 nav { display: flex; }
 nav a { display: flex; align-items: center; padding: 0 14px; color: #3a3a3a; text-decoration: none; border-left: 1px solid #1e1e1e; font-size: 12px; }
@@ -27,15 +28,15 @@ nav a:hover  { color: #888; background: #161616; }
 nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 
 #preview-wrap {
-  flex: 1; min-height: 0; background: #000;
+  flex: 1; min-height: 0; display: flex; gap: 2px; background: #1a1a1a;
 }
-#preview-frame { width: 100%; height: 100%; border: none; display: block; }
+.cam-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.cam-label { background: #111; color: #444; font-size: 11px; padding: 3px 8px; border-bottom: 1px solid #1e1e1e; }
+.cam-panel iframe { flex: 1; border: none; display: block; width: 100%; }
 
-#clip-bar {
-  flex-shrink: 0;
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 14px; background: #111; border-top: 1px solid #1e1e1e;
-}
+#clip-area { flex-shrink: 0; background: #111; border-top: 1px solid #1e1e1e; }
+.clip-bar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; }
+.clip-bar + .clip-bar { border-top: 1px solid #1a1a1a; }
 .ts-wrap { display: flex; align-items: center; gap: 6px; }
 .ts-lbl  { color: #444; }
 .ts-in {
@@ -43,15 +44,21 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
   padding: 3px 7px; font-family: monospace; font-size: 12px; width: 178px;
 }
 .ts-in:focus { outline: none; border-color: #4caf50; color: #c8c8c8; }
-#dl-dur { color: #444; font-size: 12px; min-width: 44px; }
-#btn-dl {
-  margin-left: auto; padding: 4px 16px;
-  background: #4caf50; color: #0a0a0a;
+.dl-dur { color: #444; font-size: 12px; min-width: 44px; }
+.btn-dl {
+  padding: 4px 16px; background: #4caf50; color: #0a0a0a;
   border: none; font-family: monospace; font-size: 13px; font-weight: bold;
   cursor: pointer; text-decoration: none; display: inline-block;
 }
-#btn-dl:hover { background: #66bb6a; }
-#btn-dl.off   { background: #1a1a1a; color: #333; pointer-events: none; }
+.btn-dl:hover { background: #66bb6a; }
+.btn-dl.off   { background: #1a1a1a; color: #333; pointer-events: none; }
+.cam-tag { color: #555; font-size: 11px; min-width: 36px; }
+#btn-sync {
+  margin-left: auto; background: none; border: 1px solid #252525; color: #555;
+  font-family: monospace; font-size: 12px; padding: 3px 10px; cursor: pointer;
+}
+#btn-sync:hover { border-color: #4caf50; color: #4caf50; }
+#btn-sync.unlocked { color: #f59f00; border-color: #f59f00; }
 </style>
 </head>
 <body>
@@ -59,7 +66,7 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
 <div id="statusbar">
   <span class="s-item" id="s-host">—</span>
   <span class="s-item" id="s-rec" class="off">○ idle</span>
-  <span class="s-item" id="s-cam">cam0</span>
+  <span class="s-item" id="s-cam">—</span>
   <span class="s-item" id="s-disk">—</span>
   <span class="s-item" id="s-event">—</span>
   <span class="s-gap"></span>
@@ -70,82 +77,153 @@ nav a.active { color: #c8c8c8; border-bottom: 2px solid #4caf50; }
   </nav>
 </div>
 
-<div id="preview-wrap">
-  <iframe id="preview-frame" allowfullscreen></iframe>
-</div>
-
-<div id="clip-bar">
-  <div class="ts-wrap">
-    <span class="ts-lbl">início</span>
-    <input class="ts-in" id="in-s" type="text" spellcheck="false">
-  </div>
-  <div class="ts-wrap">
-    <span class="ts-lbl">fim</span>
-    <input class="ts-in" id="in-e" type="text" spellcheck="false">
-  </div>
-  <span id="dl-dur"></span>
-  <a id="btn-dl" class="off" href="#" download>↓ baixar clipe</a>
-</div>
+<div id="preview-wrap"></div>
+<div id="clip-area"></div>
 
 <script>
-const CLIP_API = "/api";
+const CLIP_API    = "/api";
 const PREVIEW_BASE = `http://${location.hostname}:8888`;
-const CAM = '0';
-let S = null, E = null;
+
+let cameras = [];
+let synced  = true;
+const state = {};  // { [camId]: { S: number|null, E: number|null } }
+
 const iso   = ts => new Date(ts * 1000).toISOString().replace('.000', '');
 const epoch = s  => Date.parse(s) / 1000;
 
-const inS   = document.getElementById('in-s');
-const inE   = document.getElementById('in-e');
-const btnDl = document.getElementById('btn-dl');
-const dlDur = document.getElementById('dl-dur');
+function buildLayout(cams) {
+  // Painéis de preview
+  const wrap = document.getElementById('preview-wrap');
+  wrap.innerHTML = '';
+  cams.forEach(id => {
+    const panel = document.createElement('div');
+    panel.className = 'cam-panel';
+    panel.innerHTML =
+      `<div class="cam-label">cam${id}</div>` +
+      `<iframe id="preview-${id}" allowfullscreen src="${PREVIEW_BASE}/cam${id}"></iframe>`;
+    wrap.appendChild(panel);
+  });
 
-function updateDl() {
-  if (!S || !E || E <= S) {
-    btnDl.className = 'off'; btnDl.href = '#'; dlDur.textContent = '';
-    return;
-  }
-  btnDl.className = '';
-  btnDl.href = `${CLIP_API}/clips?camera=${CAM}&start=${iso(S)}&end=${iso(E)}`;
-  const dur = Math.round(E - S);
-  dlDur.textContent = dur >= 60 ? `${Math.floor(dur/60)}m${dur%60}s` : `${dur}s`;
+  // Barra sync (visível por padrão)
+  const area = document.getElementById('clip-area');
+  area.innerHTML = '';
+  const syncBar = document.createElement('div');
+  syncBar.id = 'clip-bar-sync';
+  syncBar.className = 'clip-bar';
+  syncBar.innerHTML =
+    `<div class="ts-wrap"><span class="ts-lbl">início</span><input class="ts-in" id="sync-s" type="text" spellcheck="false"></div>` +
+    `<div class="ts-wrap"><span class="ts-lbl">fim</span><input class="ts-in" id="sync-e" type="text" spellcheck="false"></div>` +
+    `<span class="dl-dur" id="sync-dur"></span>` +
+    cams.map(id => `<a class="btn-dl off" id="btn-dl-${id}" href="#" download>↓ cam${id}</a>`).join('') +
+    `<button id="btn-sync">⛓ sync</button>`;
+  area.appendChild(syncBar);
+
+  // Barras independentes (ocultas por padrão)
+  cams.forEach(id => {
+    const bar = document.createElement('div');
+    bar.id = `clip-bar-${id}`;
+    bar.className = 'clip-bar';
+    bar.style.display = 'none';
+    bar.innerHTML =
+      `<span class="cam-tag">cam${id}</span>` +
+      `<div class="ts-wrap"><span class="ts-lbl">início</span><input class="ts-in" id="s-${id}" type="text" spellcheck="false"></div>` +
+      `<div class="ts-wrap"><span class="ts-lbl">fim</span><input class="ts-in" id="e-${id}" type="text" spellcheck="false"></div>` +
+      `<span class="dl-dur" id="dur-${id}"></span>` +
+      `<a class="btn-dl off" id="indep-dl-${id}" href="#" download>↓ baixar</a>`;
+    area.appendChild(bar);
+  });
+
+  wireEvents(cams);
 }
 
-function setSel(s, e) {
-  S = s; E = e;
-  inS.value = iso(S);
-  inE.value = iso(E);
-  updateDl();
+function wireEvents(cams) {
+  cams.forEach(id => { state[id] = { S: null, E: null }; });
+
+  document.getElementById('sync-s').addEventListener('change', e => {
+    const ts = epoch(e.target.value);
+    if (!isNaN(ts)) { cams.forEach(id => { state[id].S = ts; }); updateSyncDl(); }
+  });
+  document.getElementById('sync-e').addEventListener('change', e => {
+    const ts = epoch(e.target.value);
+    if (!isNaN(ts)) { cams.forEach(id => { state[id].E = ts; }); updateSyncDl(); }
+  });
+
+  cams.forEach(id => {
+    document.getElementById(`s-${id}`).addEventListener('change', e => {
+      const ts = epoch(e.target.value); if (!isNaN(ts)) { state[id].S = ts; updateIndepDl(id); }
+    });
+    document.getElementById(`e-${id}`).addEventListener('change', e => {
+      const ts = epoch(e.target.value); if (!isNaN(ts)) { state[id].E = ts; updateIndepDl(id); }
+    });
+  });
+
+  document.getElementById('btn-sync').addEventListener('click', () => {
+    synced = !synced;
+    const btn = document.getElementById('btn-sync');
+    btn.textContent = synced ? '⛓ sync' : '🔓 unlock';
+    btn.classList.toggle('unlocked', !synced);
+    document.getElementById('clip-bar-sync').style.display = synced ? '' : 'none';
+    cams.forEach(id => {
+      document.getElementById(`clip-bar-${id}`).style.display = synced ? 'none' : '';
+    });
+  });
+}
+
+function updateSyncDl() {
+  const dur = document.getElementById('sync-dur');
+  cameras.forEach(id => {
+    const { S, E } = state[id];
+    const btn = document.getElementById(`btn-dl-${id}`);
+    if (!S || !E || E <= S) { btn.className = 'btn-dl off'; btn.href = '#'; dur.textContent = ''; return; }
+    btn.className = 'btn-dl';
+    btn.href = `${CLIP_API}/clips?camera=${id}&start=${iso(S)}&end=${iso(E)}`;
+    const d = Math.round(E - S);
+    dur.textContent = d >= 60 ? `${Math.floor(d/60)}m${d%60}s` : `${d}s`;
+  });
+}
+
+function updateIndepDl(id) {
+  const { S, E } = state[id];
+  const btn = document.getElementById(`indep-dl-${id}`);
+  const dur = document.getElementById(`dur-${id}`);
+  if (!S || !E || E <= S) { btn.className = 'btn-dl off'; btn.href = '#'; dur.textContent = ''; return; }
+  btn.className = 'btn-dl';
+  btn.href = `${CLIP_API}/clips?camera=${id}&start=${iso(S)}&end=${iso(E)}`;
+  const d = Math.round(E - S);
+  dur.textContent = d >= 60 ? `${Math.floor(d/60)}m${d%60}s` : `${d}s`;
 }
 
 async function loadRange() {
+  if (!cameras.length) return;
   try {
-    const r = await fetch(`${CLIP_API}/range?camera=${CAM}`);
+    const r = await fetch(`${CLIP_API}/range?camera=${cameras[0]}`);
     if (!r.ok) return;
     const d = await r.json();
     if (!d.first || !d.last) return;
-    const t1 = epoch(d.last);
-    const t0 = epoch(d.first);
-    if (!S) setSel(Math.max(t0, t1 - 60), t1);
+    const t1 = epoch(d.last), t0 = epoch(d.first);
+    const S = Math.max(t0, t1 - 60), E = t1;
+    document.getElementById('sync-s').value = iso(S);
+    document.getElementById('sync-e').value = iso(E);
+    cameras.forEach(id => { state[id] = { S, E }; });
+    updateSyncDl();
   } catch {}
 }
-loadRange();
-setInterval(loadRange, 30000);
 
-inS.addEventListener('change', () => { const ts = epoch(inS.value); if (!isNaN(ts)) { S = ts; updateDl(); } });
-inE.addEventListener('change', () => { const ts = epoch(inE.value); if (!isNaN(ts)) { E = ts; updateDl(); } });
-btnDl.addEventListener('click', e => {
-  if (btnDl.classList.contains('off')) { e.preventDefault(); return; }
-  dlDur.textContent = 'gerando…';
-  setTimeout(updateDl, 3000);
-});
-
-// preview: bate direto na porta 8888 do MediaMTX, sem passar pelo nginx proxy
-document.getElementById('preview-frame').src = `${PREVIEW_BASE}/cam0`;
-
-// status bar
-document.getElementById('s-host').textContent = location.hostname;
-document.querySelectorAll('.tab').forEach(t => { if (t.getAttribute('href') === location.pathname) t.classList.add('active'); });
+async function init() {
+  document.getElementById('s-host').textContent = location.hostname;
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.getAttribute('href') === location.pathname) t.classList.add('active');
+  });
+  try {
+    const r = await fetch(`${CLIP_API}/cameras`);
+    cameras = r.ok ? await r.json() : ['0', '1'];
+  } catch { cameras = ['0', '1']; }
+  document.getElementById('s-cam').textContent = cameras.map(id => `cam${id}`).join(' | ');
+  buildLayout(cameras);
+  await loadRange();
+  setInterval(loadRange, 30000);
+}
+init();
 
 async function pollMetrics() {
   try {
