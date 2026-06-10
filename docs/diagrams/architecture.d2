@@ -1,120 +1,96 @@
 direction: right
 
-# ─────────────────────────────────────────────────────────────────────
-# Entrada
-# ─────────────────────────────────────────────────────────────────────
-cameras: "📷 Câmeras\nZED X One S × 2\nGMSL2 · kernel driver" {
+cameras: "📷 ZED X One S × 2\nGMSL2 · kernel driver" {
   style.fill: "#f1f3f5"
   style.stroke: "#868e96"
 }
 
 operator: "👤 Operador" { shape: person }
 
-# ─────────────────────────────────────────────────────────────────────
-# Jetson Orin NX — tudo aqui roda na placa
-# ─────────────────────────────────────────────────────────────────────
 jetson: "Jetson Orin NX" {
   style.fill: "#f8f9fa"
   style.stroke: "#343a40"
   direction: right
 
-  recorder: "🐳 recorder  [profile: jetson]\n\nCaptura câmeras via Argus/GStreamer.\nGrava DVR contínuo em fMP4.\nBuffer circular no tmpfs (60s).\nFlush periódico → events/ (independente do conveyor)\nAI ⚠ disabled" {
+  recorder: "🐳 recorder" {
     style.fill: "#dbe4ff"
     style.stroke: "#4263eb"
+    direction: down
+
+    cam0: "cam0 — front\nArgus 0 · NVENC\nnvinfer cam0.engine\nbuffer 60s" {
+      style.fill: "#edf2ff"
+      style.stroke: "#4263eb"
+    }
+    cam1: "cam1 — rear\nArgus 1 · NVENC\nnvinfer cam1.engine\nbuffer 60s" {
+      style.fill: "#edf2ff"
+      style.stroke: "#4263eb"
+    }
   }
 
-  storage: "💾 Storage  (host volumes)" {
+  storage: "💾 Storage" {
     style.fill: "#f1f3f5"
     style.stroke: "#868e96"
     direction: down
 
-    nvme: "NVMe — DVR segments (~20 dias)" { shape: cylinder; style.fill: "#ffffff" }
-    tmpfs: "tmpfs — buffer circular 60s" { shape: cylinder; style.fill: "#fff9db"; style.stroke: "#f59f00" }
-    sqlite: "SQLite — índice + eventos" { shape: cylinder; style.fill: "#ffffff" }
-    events: "events/ — clips de IA\n⚠ só com ai.enabled: true" { shape: cylinder; style.fill: "#fff5f5"; style.stroke: "#e03131" }
+    nvme:   "NVMe  DVR cam0+cam1" { shape: cylinder; style.fill: "#fff" }
+    tmpfs:  "tmpfs  buffer cam0+cam1" { shape: cylinder; style.fill: "#fff9db"; style.stroke: "#f59f00" }
+    sqlite: "SQLite  índice+eventos" { shape: cylinder; style.fill: "#fff" }
+    events: "events/  clips" { shape: cylinder; style.fill: "#fff5f5"; style.stroke: "#e03131" }
   }
 
-  clipapi: "🐳 clip-api  :8080\n\nGET /clips\nGET /events\nGET /events/{id}/clip" {
+  models: "📦 models/ :ro\ncam0/detector.engine\ncam1/classifier.engine" {
+    shape: cylinder
+    style.fill: "#f3f0ff"
+    style.stroke: "#7048e8"
+  }
+
+  uploader: "🐳 uploader\nEventIndex → VSTP" {
     style.fill: "#d3f9d8"
     style.stroke: "#2f9e44"
   }
 
-  uploader: "🐳 uploader\n\nLê EventIndex (SQLite).\nEnvia via VSTP → Conveyor." {
+  clipapi: "🐳 clip-api  :8080\n/clips · /events · /range" {
     style.fill: "#d3f9d8"
     style.stroke: "#2f9e44"
   }
 
-  dashboard: "🐳 dashboard  :8080 interno\n\nInterface web para\nclips e eventos" {
-    style.fill: "#d3f9d8"
-    style.stroke: "#2f9e44"
-  }
-
-  gateway: "🐳 gateway  :80 público\n\n/, /api" {
-    style.fill: "#e7f5ff"
-    style.stroke: "#1971c2"
-  }
-
-  preview: "🐳 preview  (MediaMTX)\n\nRecebe RTSP do recorder.\nReexpõe HLS/WebRTC.\n:8554 · :8888 · :8889" {
+  preview: "🐳 preview\nMediaMTX\n:8888 · :8554" {
     style.fill: "#f8f9fa"
     style.stroke: "#adb5bd"
     style.stroke-dash: 5
   }
+
+  dashboard: "🐳 dashboard\nsplit view cam0|cam1" {
+    style.fill: "#d3f9d8"
+    style.stroke: "#2f9e44"
+  }
+
+  gateway: "🐳 gateway  :80\n/, /api" {
+    style.fill: "#e7f5ff"
+    style.stroke: "#1971c2"
+  }
 }
 
-# ─────────────────────────────────────────────────────────────────────
-# Saída / Infra
-# ─────────────────────────────────────────────────────────────────────
-tailscale: "🔒 Tailscale\nomnitrac-4cbb47c1331a" {
+conveyor: "☁ Conveyor\nVSTP → S3" {
+  style.fill: "#e7f5ff"
+  style.stroke: "#1971c2"
+}
+
+tailscale: "🔒 Tailscale" {
   shape: oval
   style.fill: "#e7f5ff"
   style.stroke: "#1971c2"
 }
 
-conveyor: "☁ Conveyor\nconveyor.tractian.com:8080\nVSTP → S3" {
-  style.fill: "#e7f5ff"
-  style.stroke: "#1971c2"
-}
-
-registerapi: "omni-ops\nregister-api" {
-  style.fill: "#f3f0ff"
-  style.stroke: "#7048e8"
-}
-
-# ─────────────────────────────────────────────────────────────────────
-# Fluxo principal
-# ─────────────────────────────────────────────────────────────────────
-cameras -> jetson.recorder: "GMSL2 via Argus"
-jetson.recorder -> jetson.storage: "grava fMP4\nindexas\nbuffer"
-jetson.storage -> jetson.clipapi: "serve clips\nquery"
+cameras -> jetson.recorder: "GMSL2"
+jetson.models -> jetson.recorder: "engines" { style.stroke: "#7048e8"; style.stroke-dash: 5 }
+jetson.recorder -> jetson.storage: "DVR · buffer · flush"
+jetson.recorder -> jetson.preview: "RTSP push" { style.stroke-dash: 5; style.stroke: "#adb5bd" }
+jetson.storage -> jetson.uploader: "events/"
+jetson.storage -> jetson.clipapi: "query"
+jetson.uploader -> conveyor: "VSTP"
 jetson.clipapi -> jetson.gateway: "/api"
 jetson.dashboard -> jetson.gateway: "/"
-jetson.gateway -> tailscale: :80
+jetson.gateway -> tailscale: ":80"
+jetson.preview -> tailscale: ":8888" { style.stroke-dash: 5; style.stroke: "#adb5bd" }
 operator -> tailscale: "acesso remoto"
-
-# preview: recorder pusha via RTSP; operador acessa direto na :8888 (WebRTC)
-jetson.recorder -> jetson.preview: "RTSP push\n(via shm socket)" {
-  style.stroke-dash: 5
-  style.stroke: "#adb5bd"
-}
-jetson.preview -> tailscale: ":8888 WebRTC\n(direto, bypassa gateway)" {
-  style.stroke-dash: 5
-  style.stroke: "#adb5bd"
-}
-
-# ─────────────────────────────────────────────────────────────────────
-# Fluxo desabilitado
-# ─────────────────────────────────────────────────────────────────────
-jetson.storage -> jetson.uploader: "lê events/\n+ EventIndex"
-jetson.uploader -> conveyor: "VSTP"
-
-# ─────────────────────────────────────────────────────────────────────
-# Dev / Provisioning
-# ─────────────────────────────────────────────────────────────────────
-operator -> registerapi: "provision.sh" {
-  style.stroke-dash: 5
-  style.stroke: "#7048e8"
-}
-registerapi -> tailscale: "auth_key" {
-  style.stroke-dash: 5
-  style.stroke: "#7048e8"
-}
